@@ -43,7 +43,9 @@ def main():
     p.add_argument("--hierarchical-vla-model",type=Path,
                    help="Optional trained Video-JEPA2+gaze+language skill/state checkpoint")
     p.add_argument("--hierarchical-vla-features",type=Path,
-                   help="Actual same-episode current/goal/Aria-gaze representation pack")
+                   help="Existing VLA features (offline diagnostic; not fresh robot state)")
+    p.add_argument("--hierarchical-vla-reference-pack",type=Path,
+                   help="Real Aria-goal/gaze pack; dynamically encode CURRENT Reachy scene before action and recorded post-state after execution")
     p.add_argument("--hierarchical-vla-index",type=int,default=0,
                    help="Feature sample index; 0 typically denotes current pre-step state")
     p.add_argument("--vjepa-state-model",type=Path,
@@ -76,11 +78,21 @@ def main():
             if prediction["class"]!=st[key]:
                 raise RuntimeError(f"ABSTAIN: learned {role}={prediction['class']} disagrees with narration/gaze {st[key]}")
     plan["learned_grounding"]=inference
-    if bool(a.hierarchical_vla_model)!=bool(a.hierarchical_vla_features):
-        p.error("Supply both --hierarchical-vla-model and --hierarchical-vla-features")
+    if a.hierarchical_vla_reference_pack and a.hierarchical_vla_features:
+        p.error("Supply either --hierarchical-vla-reference-pack OR --hierarchical-vla-features")
+    vla_features=a.hierarchical_vla_features
+    if a.hierarchical_vla_reference_pack:
+        if not a.scene or not a.scene.is_file():
+            p.error("Live Video-JEPA2 encoding requires a valid --scene")
+        from vla_live_observation import make_live_pack
+        fresh=a.out/"current_robot_vla.npz"
+        make_live_pack(a.hierarchical_vla_reference_pack,fresh,scene=a.scene)
+        vla_features=fresh
+    if bool(a.hierarchical_vla_model)!=bool(vla_features):
+        p.error("Supply a trained --hierarchical-vla-model plus fresh reference pack or features")
     if a.hierarchical_vla_model:
         option=infer_hierarchical_vla(a.hierarchical_vla_model,
-                   a.hierarchical_vla_features,a.hierarchical_vla_index)
+                   vla_features,0 if a.hierarchical_vla_reference_pack else a.hierarchical_vla_index)
         plan["hierarchical_vla_prediction"]=option
         if not option["graph_valid"]:
             raise RuntimeError("ABSTAIN: learned atomic action violates known task graph")
@@ -133,6 +145,33 @@ def main():
         if a.dino_reanchor:
             cmd.append("--dino-reanchor")
         subprocess.run(cmd,check=True)
+        # Re-encode the ACTUAL new final Reachy observation, and compare the
+        # learned goal score with the independent MuJoCo physics verification.
+        # This is optional and DOES NOT override the trusted oracle.
+        if a.hierarchical_vla_reference_pack and a.record:
+            color=st["object"].split("_")[0]
+            final_image=(a.out/"robot"/manifest["demo_id"]/
+                         f"01_{color}"/"10_final.png")
+            if final_image.is_file():
+                from vla_live_observation import make_live_pack
+                current_after=a.out/"post_robot_vla.npz"
+                make_live_pack(a.hierarchical_vla_reference_pack,current_after,
+                               robot_image=final_image)
+                prediction=infer_hierarchical_vla(a.hierarchical_vla_model,current_after)
+                summary_path=a.out/"robot"/manifest["demo_id"]/"summary.json"
+                outcome=json.loads(summary_path.read_text())
+                validation={
+                    "learned_post_action_prediction":prediction,
+                    "oracle_final_state":outcome["final_oracle_state"],
+                    "comparison":"diagnostic; no cross-view completion accuracy claimed",
+                    "goal_source":"human final Aria video; NOT a simulation oracle mask",
+                    "actual_robot_frame":str(final_image),
+                }
+                file=a.out/"vla_postcondition_diagnostic.json"
+                file.write_text(json.dumps(validation,indent=2))
+                print("Saved fresh robot visual postcondition diagnostic:",file)
+            else:
+                print("WARN: no final clean robot camera frame for trained completion; only oracle verification available")
     else:
         print("DRY RUN: physical execution not requested. --run-sim will execute first step.")
 
