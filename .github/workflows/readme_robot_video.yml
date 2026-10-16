@@ -72,5 +72,6 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git pull --ff-only
-          git add docs/media/robot_simulation_synthetic_seeds.mp4 docs/media/robot_simulation_synthetic_seeds.gif
+          git add -f docs/media/robot_simulation_synthetic_seeds.mp4
+          git add docs/media/robot_simulation_synthetic_seeds.gif
           git diff --cached --quiet || (git commit -m "Add explicitly synthetic-seeded Reachy physics preview for README" && git push)
