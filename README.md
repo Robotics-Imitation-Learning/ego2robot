@@ -4,6 +4,14 @@
 
 A lightweight, reproducible Humanoid internship research challenge prototype. Research question: **can a humanoid execute a multi-step task by transferring human-derived object/goal correspondence and procedure, while retaining a small embodiment-specific motor controller and explicit task-state memory?**
 
+## Real Aria gaze to Reachy head-camera correspondence
+
+The key experiment now has a runnable DINOv2 feature matcher, synchronized
+gaze CSV input, head-camera image and MuJoCo oracle object-mask exporter.
+See [GAZE_CORRESPONDENCE.md](GAZE_CORRESPONDENCE.md) for commands and the
+real input paths. Do not use a gaze-circle overlay RGB for reliable DINO
+matching. Correspondence on the real capture remains to be validated.
+
 ## Time-boxed first-step Aria-to-Reachy demo
 
 **Execution scope: white cube -> white bin only.** The original physical
