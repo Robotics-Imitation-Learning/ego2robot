@@ -21,8 +21,9 @@ class TestFullProcedure(unittest.TestCase):
         self.assertEqual(len(STEPS), 7)
         self.assertEqual(STEPS[6].goal, "tray_moved_left")
         expected = [(), (), (), ("S1",), ("S2",), ("S3",),
-                    ("S3", "S4", "S5", "S6")]
+                    ("S4", "S5", "S6")]
         self.assertEqual([s.requires for s in STEPS], expected)
+        self.assertNotIn("S3", STEPS[6].requires)  # only transitive through S6
 
     def test_whisper_segment_split_and_out_of_order_narration(self):
         segments = [
@@ -136,6 +137,8 @@ class TestFullProcedure(unittest.TestCase):
         m.update({s.goal: True for s in STEPS})
         self.assertTrue(m.snapshot()["all_complete"])
         m.update({"black_cube_in_bin": False})
+        # S7 remains invalidated through S3 -> S6 -> S7, not S3 -> S7.
+        self.assertEqual(STEPS[6].requires, ("S4", "S5", "S6"))
         self.assertNotIn("S3", m.completed())
         self.assertNotIn("S6", m.completed())
         self.assertNotIn("S7", m.completed())
