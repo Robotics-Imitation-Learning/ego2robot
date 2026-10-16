@@ -12,7 +12,7 @@ The distinction matters: the **human recording must causally influence simulated
 
 ## Current implementation
 
-- [MuJoCo tabletop kit](Ego2Robot_scene/README.md): three colored open-top bins; six primitive movable objects; photographed and sorting layouts.
+- [MuJoCo tabletop kit](Ego2Robot_scene/README.md): three colored open-top bins; six primitive movable objects; photographed, sorting and lab-matched layouts.
 - [Parametric dimensions](Ego2Robot_scene/dimensions.json): editable approximate physical dimensions in metres.
 - [Scene generator](Ego2Robot_scene/scene_builder.py): standalone MJCF scenes or generated scenes merged with an upstream Reachy 2 table scene.
 - [Smoke test](Ego2Robot_scene/smoke_test.py): physics compilation, object presence and optional offscreen render.
@@ -28,8 +28,8 @@ source .ego2robot_venv/bin/activate
 python -m pip install -r requirements.txt
 
 cd Ego2Robot_scene
-python scene_builder.py
-python smoke_test.py generated/standalone_sorting.xml --settle
+python scene_builder.py --preset lab
+python smoke_test.py generated/standalone_lab.xml --settle
 # For headless NVIDIA EGL rendering:
 MUJOCO_GL=egl python smoke_test.py generated/standalone_sorting.xml --render
 ```
