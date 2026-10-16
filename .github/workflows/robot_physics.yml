@@ -96,3 +96,21 @@ jobs:
             echo "RED -> WHITE: incomplete (experimental)"
             grep -E 'EXECUTING DEMONSTRATED|PASS: physical|RuntimeError|GRASP NOT|Task unsuccessful|Stopping' /tmp/red_white.log || true
           fi
+
+      - name: Separated pickup stations: two-step procedural execution
+        run: |
+          unset MUJOCO_GL
+          python Ego2Robot_scene/challenge_scene.py \
+            --reachy-assets reachy2_mujoco_assets --layout compact-spaced
+          for plan in synthetic_two_step synthetic_red_white; do
+            echo "=== SPACED 2-STEP ORDER ${plan} ==="
+            if python -u Ego2Robot_scene/execute_demo.py \
+                reachy2_mujoco_assets/scenes/ego2robot_spaced.xml \
+                --plan "tests/fixtures/${plan}.json" --max-steps 2 \
+                --approach-open-angle 1.0 > /tmp/spaced_two.log 2>&1; then
+              echo "2-STEP PHYSICAL SUCCESS: ${plan}"
+            else
+              echo "2-STEP NOT COMPLETED: ${plan}"
+              grep -E 'EXECUTING DEMONSTRATED|Initial source|grasp: executed|PASS: physical|GRASP NOT|RuntimeError|Task unsuccessful' /tmp/spaced_two.log || true
+            fi
+          done
