@@ -97,7 +97,7 @@ jobs:
             grep -E 'EXECUTING DEMONSTRATED|PASS: physical|RuntimeError|GRASP NOT|Task unsuccessful|Stopping' /tmp/red_white.log || true
           fi
 
-      - name: Separated pickup stations: two-step procedural execution
+      - name: Separated pickup stations - two-step procedural execution
         run: |
           unset MUJOCO_GL
           python Ego2Robot_scene/challenge_scene.py \
