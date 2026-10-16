@@ -4,6 +4,15 @@
 
 A lightweight, reproducible Humanoid internship research challenge prototype. Research question: **can a humanoid execute a multi-step task by transferring human-derived object/goal correspondence and procedure, while retaining a small embodiment-specific motor controller and explicit task-state memory?**
 
+## Full seven-step egocentric procedure and symbolic memory
+
+See [FULL_PROCEDURE.md](FULL_PROCEDURE.md): one-command real MP4 narration
+extraction, the user-verified seven-step causal graph, optional measured
+gaze evidence and persistent execution-memory reconciliation. The DAG and
+gaze queries drive procedural decisions independently of robot time.
+Only cube-to-bin motor skills are currently implemented; a seven-step
+physical rollout is **not** claimed.
+
 ## Live, phase-aware robot visual tracking
 
 **Implemented:** two measured Aria gaze-derived DINOv2 query descriptors

@@ -11,12 +11,15 @@ import re
 from pathlib import Path
 
 COLORS=("white","red","black")
-TASK_GRAPH=[
- {"goal":f"{c}_cube_in_bin","object":f"{c}_cube","destination":f"{c}_bin","requires":[]} for c in COLORS
-]+[
- {"goal":f"{c}_bin_in_tray","object":f"{c}_bin","destination":"wooden_tray","requires":[f"{c}_cube_in_bin"]} for c in COLORS
-]+[{"goal":"tray_moved","object":"wooden_tray","destination":"side",
-    "requires":[f"{c}_bin_in_tray" for c in COLORS]}]
+from procedure_graph import STEPS, BY_ID
+
+# Keep the first-step goal-name contract while reusing the full DAG.
+TASK_GRAPH = [
+    {"goal": step.goal, "object": step.object,
+     "destination": step.destination,
+     "requires": [BY_ID[prev].goal for prev in step.requires]}
+    for step in STEPS
+]
 
 def parse_narration(text):
     w=re.findall(r"[a-z]+",text.lower())
