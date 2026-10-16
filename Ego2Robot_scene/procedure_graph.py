@@ -189,10 +189,12 @@ class ProcedureMemory:
     def record_attempt(self, step_id, outcome, *, detail=None):
         if step_id not in BY_ID:
             raise ValueError("Unknown step: " + str(step_id))
-        if step_id not in {s.id for s in self.enabled()}:
-            raise RuntimeError("Step is not enabled: " + step_id)
         if outcome not in ("started", "failed", "controller_reported_success"):
             raise ValueError("Invalid attempt status")
+        # START requires satisfied preconditions. Outcomes arrive AFTER
+        # the oracle update, when the step may already be completed.
+        if outcome == "started" and step_id not in {s.id for s in self.enabled()}:
+            raise RuntimeError("Step is not enabled: " + step_id)
         row = {"step": step_id, "outcome": outcome, "detail": detail}
         self.attempts.append(row)
         return row  # Never turn a controller report into verified state.
