@@ -203,10 +203,10 @@ class ProcedureMemory:
         for s in STEPS:
             if s.id in done:
                 status = "verified_complete"
-            elif not all(p in done for p in s.requires):
-                status = "blocked"
             elif self.observations.get(s.goal) is True:
                 status = "inconsistent"
+            elif not all(p in done for p in s.requires):
+                status = "blocked"
             elif self.observations.get(s.goal) is False:
                 status = "ready_incomplete"
             else:
