@@ -118,12 +118,22 @@ def mask_grid(mask,grid_h,grid_w):
 def interpret(score,masks,reference_size,mapping,min_cosine,margin):
     # Infer from DINO scores, then use *PRIVILEGED* MuJoCo masks to
     # associate predicted target pixels with canonical object IDs.
+    # Importantly, the robot RGB was letterboxed: the original masks MUST
+    # undergo the same letterbox mapping before scoring DINO patch cells.
     h,w=score.shape
+    size=round(w*14)
+    x0,y0,sx,sy=mapping
     region_scores={}
     peaks={}
     for name,mask in masks.items():
         if not mask.any():continue
-        resized=mask_grid(mask,h,w)
+        resized_image=Image.fromarray((mask*255).astype(np.uint8))
+        rw=max(1,round(reference_size[0]*sx))
+        rh=max(1,round(reference_size[1]*sy))
+        scaled=resized_image.resize((rw,rh),Image.Resampling.NEAREST)
+        square=Image.new("L",(size,size),0)
+        square.paste(scaled,(int(x0),int(y0)))
+        resized=mask_grid(np.asarray(square)>0,h,w)
         if not resized.any():continue
         region=np.where(resized,score,-np.inf)
         best=float(np.max(region))
@@ -172,7 +182,7 @@ def main():
     match.add_argument("--model",default=MODEL)
     match.add_argument("--torch-hub-repo",default="facebookresearch/dinov2",
                        help="Official DINO repository, or local torch hub checkout")
-    match.add_argument("--min-cosine",type=float,default=0.40)
+    match.add_argument("--min-cosine",type=float,default=0.50)
     match.add_argument("--min-margin",type=float,default=0.015)
     match.add_argument("--out",type=Path,default=Path("outputs/gaze_correspondence"))
     a=p.parse_args()
