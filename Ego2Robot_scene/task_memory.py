@@ -20,11 +20,15 @@ def in_bin(model, data, object_name, bin_color):
     """Pose-based predicate; conservative margins prevent counting nearby objects."""
     obj = data.body('e2r_' + object_name)
     x, y, z = (float(p) for p in obj.xpos)
-    target_y = BIN_Y[bin_color]
-    xy_ok = abs(x - BIN_WORLD_X) < (BIN_INNER_HALF_X - .015) and abs(y - target_y) < (BIN_INNER_HALF_Y - .015)
-    # For 3 cm cubes the center rests at ~0.649 m. Reject a cube hovering
-    # above the bin: high gaze intent alone is not task completion.
-    z_ok = abs(z - (BIN_FLOOR_TOP + .015)) < .014
+    # Read bin position directly from the compiled scene so the same
+    # predicate works for both nested-bin and lab-separated layouts.
+    bin_pos = data.body('e2r_' + bin_color + '_bin').xpos
+    target_x, target_y, bin_bottom = (float(p) for p in bin_pos)
+    xy_ok = (abs(x - target_x) < (BIN_INNER_HALF_X - .015)
+             and abs(y - target_y) < (BIN_INNER_HALF_Y - .015))
+    # A 3 cm cube centre rests one half-height above the bin floor.
+    # Reject hovering objects and failed placement attempts.
+    z_ok = abs(z - (bin_bottom + BIN_F + .015)) < .014
     return bool(xy_ok and z_ok)
 
 
