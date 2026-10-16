@@ -411,6 +411,21 @@ def run(args, runtime=None):
     source_body = data.body("e2r_" + source)
     bin_body = data.body("e2r_" + destination)
 
+    if getattr(args, "isolate_other_cubes", False):
+        # DIAGNOSTIC ONLY: change initial positions of other loose cubes.
+        # Never report an isolated test as a full three-object task run.
+        for i, other in enumerate(("white_cube", "red_cube", "black_cube")):
+            if other == source:
+                continue
+            jid = mujoco.mj_name2id(
+                model, mujoco.mjtObj.mjOBJ_JOINT, "e2r_" + other + "_joint"
+            )
+            qadr = int(model.jnt_qposadr[jid])
+            data.qpos[qadr:qadr + 3] = [1.4, 0.5 + 0.1 * i, 0.64]
+        mujoco.mj_forward(model, data)
+        print("DIAGNOSTIC: removed neighbouring loose cubes from the workspace",
+              flush=True)
+
     if args.jitter:
         jid = mujoco.mj_name2id(
             model, mujoco.mjtObj.mjOBJ_JOINT, "e2r_" + source + "_joint"
@@ -689,6 +704,8 @@ def main():
     parser.add_argument("--grasp-style", choices=["topdown", "side"],
                         default="side",
                         help="Reachable side pinch (default); topdown currently IK-infeasible")
+    parser.add_argument("--isolate-other-cubes", action="store_true",
+                        help="Diagnostic only: move non-target cubes away initially")
     parser.add_argument("--approach-open-angle", type=float, default=None,
                         help="Optional narrower initial gripper opening in radians")
     parser.add_argument("--pinch-height", type=float, default=0.010,
