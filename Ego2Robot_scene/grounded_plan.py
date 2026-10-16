@@ -80,6 +80,23 @@ def build_plan(manifest,transcript,gaze_matches=None,allow_narration_only=False,
                  "destination_attended":row["destination"] in attended}
             if row["object"] not in attended or row["destination"] not in attended:
                 raise RuntimeError("Gaze correspondence failed to confirm narrated objects: "+str(row["gaze_evidence"]))
+            # Human times index RGB observations, NEVER robot-phase schedules.
+            def phase_target(target):
+                candidates=[e for e in subset if e["target"]==target]
+                observation=max(candidates,key=lambda e:float(e["score"]))
+                return {"label":target,
+                        "human_observation_time_s":float(observation["timestamp_s"]),
+                        "robot_xy":observation.get("robot_xy"),
+                        "score":float(observation["score"]),
+                        "raw_cosine":observation.get("raw_cosine")}
+            src=phase_target(row["object"])
+            dst=phase_target(row["destination"])
+            if src["human_observation_time_s"]>dst["human_observation_time_s"]:
+                raise RuntimeError("Human gaze evidence is not source-to-destination ordered")
+            row["phase_correspondence"]={
+                "source":src,"destination":dst,
+                "activation":"robot_verified_stable_grasp_only",
+                "timing":"human frames index video; robot clock independent"}
             row["grounding"]="narration_plus_observed_correspondence"
         elif allow_narration_only:
             row["grounding"]="narration_lexicon_only_NOT_VISUALLY_GROUNDED"
