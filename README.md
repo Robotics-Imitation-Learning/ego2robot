@@ -19,7 +19,7 @@ One continuous first-person recording depicts the longer task. Its measured gaze
 </tr>
 <tr>
 <td align="center" valign="top">
-<a href="data/cda03c03-68c9-4caf-9deb-5a5fa091ab0e_480_gaze_red_circle.mp4"><img alt="Open the real full-procedure Aria recording with gaze overlay" src="docs/media/full_procedure_poster.svg" width="100%"/></a>
+<a href="data/cda03c03-68c9-4caf-9deb-5a5fa091ab0e_480_gaze_red_circle.mp4"><img alt="Open the real full-procedure Aria recording with gaze overlay" src="docs/media/full_procedure_preview.gif" width="100%"/></a>
 <p><strong><a href="data/cda03c03-68c9-4caf-9deb-5a5fa091ab0e_480_gaze_red_circle.mp4">▶ Watch the full-procedure video (MP4)</a></strong></p>
 <p><sub>Real egocentric footage · visible gaze overlay</sub></p>
 </td>
@@ -53,7 +53,7 @@ flowchart LR
 
 ### A closer look: Step 1 — white cube into white container
 
-<a href="data/19a5c812-520b-4f8f-89ee-9b7b0879ca23_480_gaze_red_circle.mp4"><img alt="Open the real standalone Step 1 demonstration with measured gaze" src="docs/media/step1_poster.svg" width="560"/></a>
+<a href="data/19a5c812-520b-4f8f-89ee-9b7b0879ca23_480_gaze_red_circle.mp4"><img alt="Open the real standalone Step 1 demonstration with measured gaze" src="docs/media/step1_preview.gif" width="560"/></a>
 
 **[▶ Watch atomic Step 1 with measured gaze (MP4)](data/19a5c812-520b-4f8f-89ee-9b7b0879ca23_480_gaze_red_circle.mp4)** · [Clean Step 1 RGB recording](data/19a5c812-520b-4f8f-89ee-9b7b0879ca23.mp4) · [Step 1 gaze coordinates](data/19a5c812-520b-4f8f-89ee-9b7b0879ca23_gaze_xy.csv)
 
