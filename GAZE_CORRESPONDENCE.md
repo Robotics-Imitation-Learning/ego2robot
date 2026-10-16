@@ -17,6 +17,74 @@ Overlay MP4 (for visual inspection ONLY):
 For DINOv2, **find the matching clean, unannotated RGB video** of the
 same capture. The painted red overlay can bias all descriptors.
 
+## Verified CSV mapping (provided by applicant)
+
+The real inspection now confirms columns:
+\`frame_idx\`, \`valid\`, \`x_480\`, \`y_480\` (plus full-resolution and raw
+camera mappings). First rows show valid 480p projected coordinates around
+(277,298), with gaze-to-MP4 frame-device timestamp offsets ~0.096 ms.
+
+**For the clean 480p MP4, use exactly:**
+
+    --x-column x_480 --y-column y_480 \
+    --frame-column frame_idx --coords pixel
+
+Use this raw, unmarked RGB video:
+
+    /mnt/4TBSSD/Ego2Robot_Humanoid/data/white_cube/mp4_480/19a5c812-520b-4f8f-89ee-9b7b0879ca23_480.mp4
+
+Full-resolution clean video is also available at:
+
+    /mnt/4TBSSD/Ego2Robot_Humanoid/data/white_cube/mp4/19a5c812-520b-4f8f-89ee-9b7b0879ca23.mp4
+
+For the first demonstration, use the 480p RGB + x_480/y_480; don't
+mix full-resolution RGB with resized coordinates.
+
+### Immediate commands: no arbitrary fixation times
+
+    cd /mnt/4TBSSD/Ego2Robot_Humanoid/ego2robot
+    git pull --ff-only
+    python -m pip install opencv-python-headless
+    python - <<'PY'
+    import importlib.util as u
+    for x in ('torch','cv2','PIL','numpy'):
+        print(x, 'OK' if u.find_spec(x) else 'MISSING')
+    PY
+
+    VIDEO="/mnt/4TBSSD/Ego2Robot_Humanoid/data/white_cube/mp4_480/19a5c812-520b-4f8f-89ee-9b7b0879ca23_480.mp4"
+    CSV="/mnt/4TBSSD/Ego2Robot_Humanoid/data/white_cube/mp4_480/gaze_overlay_outputs_red_circle/gaze_xy/19a5c812-520b-4f8f-89ee-9b7b0879ca23_gaze_xy.csv"
+
+    python Ego2Robot_scene/aria_gaze_contact_sheet.py \
+      --video "$VIDEO" --gaze-csv "$CSV" \
+      --out outputs/aria_pilot_gaze_sheet.png
+
+This creates an actual 20-frame gaze contact sheet; inspect it to confirm
+correct source-frame synchronization and identify object fixations.
+
+For the first DINO matching sweep, use the EXACT SAME clean video and
+CSV, plus the robot reference already rendered by the user:
+
+    python Ego2Robot_scene/transfer_aria_gaze.py match \
+      --video "$VIDEO" --gaze-csv "$CSV" \
+      --robot-image outputs/gaze_reference/robot_head_rgb.png \
+      --robot-masks outputs/gaze_reference/robot_oracle_masks.npz \
+      --x-column x_480 --y-column y_480 \
+      --frame-column frame_idx --coords pixel \
+      --auto-samples 12 \
+      --out outputs/gaze_transfer
+
+This requires the optional torch installation and downloads the pretrained
+DINOv2 checkpoint on the first invocation. Use an existing working PyTorch
+environment if installing torch would be slow.
+
+**First successful step is only a diagnostic candidate.** Inspect both
+the resulting source gaze and robot attention point visually; do not
+interpret DINO cosine similarity as calibrated probability or use
+oracle mask names as evidence of open-world detection. If there are
+successful real matches for BOTH white_cube and white_bin, run with two
+explicit genuine times via --sample-times <cube_s> <bin_s> for the final
+white-cube grounded demonstration.
+
 ## 1. Inspect real CSV before deciding coordinate conventions
 
     cd /mnt/4TBSSD/Ego2Robot_Humanoid/ego2robot
