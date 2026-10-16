@@ -399,11 +399,10 @@ def run(args):
     print("Initial source:", np.round(source_body.xpos, 4),
           "destination:", np.round(bin_body.xpos, 4), flush=True)
 
-    # TOP-DOWN: gripper's palm local +Z points downward after its
-    # fixed arm_tip quaternion (180 degrees about Y). Hence when tip
-    # orientation = identity, fingers extend vertically DOWN toward cube.
-    # A vertical approach avoids sweeping fingertips through the table.
-    # --grasp-style side retains the original lateral approach for comparison.
+    # TOP-DOWN is currently infeasible in this scene: the actual IK
+    # residual at high clearance is 11.5 cm / 1.34 rad. The side
+    # approach has VERIFIED mm-level IK and tracking, so use it as default.
+    # We raise the pad center to clear the tabletop during insertion.
     topdown = args.grasp_style == "topdown"
     rot = np.eye(3) if topdown else rot_y(-np.pi / 2)
     print("Grasp style:", args.grasp_style, flush=True)
@@ -415,7 +414,15 @@ def run(args):
     def compute_targets():
         local_pad_offset, pad_world, gap, pads = arm.pinch_geometry()
         cube_center = np.asarray(source_body.xpos).copy()
-        desired_pinch = cube_center + np.array([0.0, 0.0, 0.004])
+        # Finger collision boxes extend 15 mm on either side of their
+        # center along WORLD z in the side-grasp orientation. The original
+        # grasp targeted a pad center just 3-4 mm above cube center,
+        # leaving ~1 mm clearance below the fingertips from the table.
+        # Raising the pinch center keeps the lower pad surface well clear
+        # of the table while overlapping the upper face of the 30mm cube.
+        desired_pinch = cube_center + np.array(
+            [0.0, 0.0, args.pinch_height if not topdown else 0.004]
+        )
         grasp_tip = desired_pinch - rot @ local_pad_offset
         if topdown:
             approach = grasp_tip + np.array([0.0, 0.0, 0.14])
@@ -424,6 +431,12 @@ def run(args):
             approach = grasp_tip + np.array([-0.11, 0.0, 0.0])
             high = approach + np.array([0.0, 0.0, 0.19])
         lifted = grasp_tip + np.array([0.0, 0.0, 0.13])
+        print(
+            "Pinch height above cube center:", 
+            round(args.pinch_height if not topdown else 0.004, 4),
+            "m (side orientation fingertip table clearance model)",
+            flush=True,
+        )
         print(
             "Measured open-gripper tip-to-pinch local offset:",
             np.round(local_pad_offset, 4).tolist(),
@@ -569,8 +582,10 @@ def main():
                         default=None)
     parser.add_argument("--mode", choices=["ik", "execute"], default="ik")
     parser.add_argument("--grasp-style", choices=["topdown", "side"],
-                        default="topdown",
-                        help="Top-down vertical pinch (default) or old lateral approach")
+                        default="side",
+                        help="Reachable side pinch (default); topdown currently IK-infeasible")
+    parser.add_argument("--pinch-height", type=float, default=0.014,
+                        help="Side-grasp pad-center height above cube center (m)")
     parser.add_argument("--jitter", type=float, nargs=2, default=None,
                         metavar=("DX", "DY"),
                         help="Randomization test: initial object displacement (m)")
@@ -583,6 +598,8 @@ def main():
     args = parser.parse_args()
     if not -0.7 <= args.head_pitch <= 0.7:
         parser.error("--head-pitch must be within the Reachy neck joint range")
+    if not 0 <= args.pinch_height <= 0.025:
+        parser.error("--pinch-height must be between 0 and 0.025 m")
     if not 1 < args.camera_fovy < 170:
         parser.error("--camera-fovy must be between 1 and 170 degrees")
     run(args)
