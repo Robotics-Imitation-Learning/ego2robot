@@ -178,8 +178,15 @@ def main():
     match.add_argument("--coords",choices=("pixel","normalized"),required=True)
     match.add_argument("--gaze-width",type=int)
     match.add_argument("--gaze-height",type=int)
-    match.add_argument("--sample-times",nargs="+",type=float,required=True,
-                       help="Elapsed seconds in MP4. Pick source/destination gaze fixation frames.")
+    selection=match.add_mutually_exclusive_group(required=True)
+    selection.add_argument("--sample-times",nargs="+",type=float,
+                       help="Explicit elapsed MP4 seconds for selected source/destination gaze fixations.")
+    selection.add_argument("--auto-samples",type=int,
+                       help="Initial diagnostic sweep of N real valid gaze frames; NOT proof of correct correspondence.")
+    match.add_argument("--start-s",type=float,default=0.0,
+                       help="Start of real-video interval used for diagnostic auto sampling.")
+    match.add_argument("--end-s",type=float,
+                       help="End of real-video interval used for diagnostic auto sampling.")
     match.add_argument("--time-tolerance",type=float,default=0.2,
                        help="Max allowed gap between video query time and nearest projected gaze sample.")
     match.add_argument("--allow-overlay-video",action="store_true",
@@ -224,6 +231,18 @@ def main():
         p.error("Marked gaze-video detected; supply an UNMARKED Aria RGB MP4 for DINO, or explicitly --allow-overlay-video for exploratory debugging only")
     samples=read_rows(a.gaze_csv,a.x_column,a.y_column,a.frame_column,a.time_column,
                       a.time_unit,a.time_origin,fps)
+    if a.auto_samples is not None:
+        if not 1<=a.auto_samples<=40:
+            p.error("--auto-samples must be between 1 and 40")
+        bound=min(count/fps,a.end_s) if a.end_s is not None else count/fps
+        candidate=samples[(samples[:,0]>=a.start_s)&(samples[:,0]<bound)]
+        if not len(candidate):
+            p.error("No valid projected gaze rows in the selected time interval")
+        take=np.unique(np.rint(np.linspace(0,len(candidate)-1,min(a.auto_samples,len(candidate)))).astype(int))
+        sample_times=candidate[take,0].tolist()
+        print("Automatic REAL gaze frame sampling:",[round(t,3) for t in sample_times],flush=True)
+    else:
+        sample_times=a.sample_times
     from PIL import Image
     robot=Image.open(a.robot_image).convert("RGB")
     masks_data=np.load(a.robot_masks,allow_pickle=False)
@@ -248,7 +267,7 @@ def main():
             rvalid[yy,xx]=px0<=xx+0.5<=px1 and py0<=yy+0.5<=py1
     a.out.mkdir(parents=True,exist_ok=True)
     events=[];debug=[]
-    for t in a.sample_times:
+    for t in sample_times:
         if t<0 or t>count/fps:raise ValueError(f"Time {t} is outside MP4 duration {count/fps}")
         idx=int(round(t*fps))
         idx=min(idx,count-1)
