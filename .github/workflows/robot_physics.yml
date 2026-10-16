@@ -24,32 +24,28 @@ jobs:
         run: python Ego2Robot_scene/challenge_scene.py --reachy-assets reachy2_mujoco_assets
       - name: Validate physics scene
         run: python Ego2Robot_scene/smoke_test.py reachy2_mujoco_assets/scenes/ego2robot_challenge.xml --settle
-      - name: Physical grasp and placement parameter sweep
+      - name: Verified white cube-to-bin regression
         run: |
           set -euo pipefail
           unset MUJOCO_GL
-          success=0
-          for pad in 3 4 5 6; do
-            python Ego2Robot_scene/challenge_scene.py \
-              --reachy-assets reachy2_mujoco_assets \
-              --finger-pad-mm "$pad"
-            for height in 0.010 0.012 0.014 0.016; do
-              echo "=== PAD ${pad}mm, PINCH HEIGHT ${height}m ==="
-              if python -u Ego2Robot_scene/pick_place.py \
-                  reachy2_mujoco_assets/scenes/ego2robot_challenge.xml \
-                  --mode execute --grasp-style side --pinch-height "$height" \
-                  > /tmp/grasp_try.log 2>&1; then
-                true
-              fi
-              grep -E 'grasp: executed|after close:|Cube lifted by|One-second static hold|GRASP NOT|after_transport:|before_release:|after release:|cube_in_bin_oracle|Task unsuccessful|PASS: physical' /tmp/grasp_try.log || true
-              if grep -q 'PASS: physical cube-in-bin predicate satisfied.' /tmp/grasp_try.log; then
-                echo "PHYSICAL PLACE SUCCESS: pad=${pad}mm, pinch_height=${height}m"
-                success=1
-                break 2
-              fi
-            done
+          python -u Ego2Robot_scene/pick_place.py \
+            reachy2_mujoco_assets/scenes/ego2robot_challenge.xml \
+            --object white_cube --mode execute --grasp-style side \
+            --pinch-height 0.010 2>&1 | tee /tmp/white.log
+          grep -q 'PASS: physical cube-in-bin predicate satisfied.' /tmp/white.log
+
+      - name: Probe transfer to other colours (experimental)
+        run: |
+          set -u
+          unset MUJOCO_GL
+          for color in red black; do
+            echo "=== ${color} cube -> ${color} bin ==="
+            python -u Ego2Robot_scene/pick_place.py \
+              reachy2_mujoco_assets/scenes/ego2robot_challenge.xml \
+              --object "${color}_cube" --mode execute \
+              --grasp-style side --pinch-height 0.010 \
+              > "/tmp/${color}.log" 2>&1
+            code=$?
+            grep -E 'pregrasp: IK|grasp: executed|Cube lifted by|One-second static hold|after_transport:|cube_in_bin_oracle|Task unsuccessful|PASS: physical|Traceback|RuntimeError' "/tmp/${color}.log" || true
+            echo "${color} exit status: $code (non-blocking feasibility probe)"
           done
-          if [ "$success" -ne 1 ]; then
-            echo "No verified stable physical place in the tested grid."
-            exit 1
-          fi
