@@ -118,7 +118,7 @@ A couple of well-calibrated demonstrations are more useful than 20 poorly
 aligned takes. Preserve the last hour for documented real-data integration,
 measured results and a reproducible submission.
 
-**Critical engineering gate:** The simulated white-cube grasp still fails.
-This is independent of collecting the Aria demonstrations. The current
-`pick_place.py` test uses privileged simulator state; demonstrate true
-real-data->policy causality before asserting challenge compliance.
+**Current engineering gate:** White-cube physical grasp, lift and placement
+are VERIFIED as of October 16, 2026. The remaining gate is actual recorded
+Aria gaze/narration -> action selection -> independently verified simulator
+execution. See [DEMO_PIPELINE.md](DEMO_PIPELINE.md).
