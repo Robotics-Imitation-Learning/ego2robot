@@ -1,165 +1,111 @@
-# Ego2Robot
+# Ego2Robot: Learning Robot Skills from Egocentric Human Demonstrations
 
-## Trainable hierarchical VLA (Video-JEPA2 + gaze + language + graph + robot skills)
+**A reproducible research prototype connecting multimodal Project Aria demonstrations to procedural task graphs, visual correspondence, a trainable hierarchical vision–language–action (VLA) architecture, and physically verified Reachy 2 manipulation in MuJoCo.**
 
-**[Trainable architecture, loss definitions, real-data training and execution commands](TRAINABLE_HIERARCHICAL_VLA.md)**
+> **Research direction.** Could a person teach or adapt a robot by demonstrating a task once from their own first-person viewpoint? Human RGB, narration, and eye gaze provide complementary evidence about **what** to do, **which objects** matter, **where** to attend, and **what successful completion looks like**. We transfer this structured information to a different embodiment, then use the robot's own observations and physical state for execution and verification.
 
-The trainable path learns a language-conditioned atomic skill/source/destination
-selector, a goal-state completion head, a mistake head (requires actual error
-labels), and a next-state embedding predictor from frozen **Video-JEPA2**
-video features, measured human DINOv2 gaze queries, and a demonstrated
-human final-state clip. It then dispatches valid skills to the existing
-physically verified Reachy 2 IK/contact controller and separately records
-MuJoCo oracle completion. A live option can re-encode current/final Reachy
-RGB, not just replay cached features. This is **trainable hierarchical option
-selection**, not a learned continuous joint-control policy or proof of
-cross-demonstration accuracy.
+**What is demonstrated today:** applicant-recorded Aria video and gaze; seven-node symbolic task representation; interfaces for human-reviewed temporal segmentation; real DINOv2 gaze-to-robot correspondence and live Lucas–Kanade tracking; a trainable, goal-conditioned Video-JEPA 2 / language / gaze skill-option model; and a **verified white-cube → white-container physical rollout**. We do **not** claim end-to-end learning from one video, automatic seven-step execution, or robustness under distribution shift.
 
+## 1. See the human demonstrations and task graph
 
-**Gaze-grounded procedural transfer from human egocentric demonstrations to a simulated humanoid manipulator.**
+### Complete egocentric procedure and its symbolic representation
 
-A lightweight, reproducible Humanoid internship research challenge prototype. Research question: **can a humanoid execute a multi-step task by transferring human-derived object/goal correspondence and procedure, while retaining a small embodiment-specific motor controller and explicit task-state memory?**
+One continuous first-person recording depicts the longer task. Its measured gaze overlay illustrates what the demonstrator attends to; the **seven-node task graph alongside it** encodes the canonical prerequisites and expected postconditions. Graph nodes are **demonstrator-specified and verified**, not automatically discovered from pixels.
 
-## Full seven-step egocentric procedure and symbolic memory
+<table>
+<tr>
+<th width="47%">Full procedure — Project Aria + measured gaze</th>
+<th width="53%">Canonical seven-step causal task graph</th>
+</tr>
+<tr>
+<td align="center" valign="top">
+<a href="data/cda03c03-68c9-4caf-9deb-5a5fa091ab0e_480_gaze_red_circle.mp4"><img alt="Open the real full-procedure Aria recording with gaze overlay" src="docs/media/full_procedure_poster.svg" width="100%"/></a>
+<p><strong><a href="data/cda03c03-68c9-4caf-9deb-5a5fa091ab0e_480_gaze_red_circle.mp4">▶ Watch the full-procedure video (MP4)</a></strong></p>
+<p><sub>Real egocentric footage · visible gaze overlay</sub></p>
+</td>
+<td valign="top">
+<a href="configs/procedure_graph.json"><img alt="Seven-step task graph: three cube placements, three container placements, and final wooden-box push" src="docs/media/procedure_graph.svg" width="100%"/></a>
+<p><strong><a href="configs/procedure_graph.json">Inspect the machine-readable task graph</a></strong></p>
+<p><sub>Three independent cube operations → three prerequisite-dependent container placements → final leftward push. Prerequisites are a partial order, not a fixed motor timeline.</sub></p>
+</td>
+</tr>
+</table>
 
-See [FULL_PROCEDURE.md](FULL_PROCEDURE.md): one-command real MP4 narration
-extraction, the user-verified seven-step causal graph, optional measured
-gaze evidence and persistent execution-memory reconciliation. The DAG and
-gaze queries drive procedural decisions independently of robot time.
-Only cube-to-bin motor skills are currently implemented; a seven-step
-physical rollout is **not** claimed.
+The **clean RGB** source is also available: [full-procedure MP4](data/cda03c03-68c9-4caf-9deb-5a5fa091ab0e_480.mp4). The repository's [data directory](data/) includes the original exported MP4s, gaze projections, overlay MP4s, and Aria recording metadata. It does **not** contain the full raw VRS streams.
 
-The new [multimodal episode pipeline](MULTIMODAL_EPISODES.md) connects the
-full recording to DINO-momentum event evidence, human-reviewed step episodes,
-and **separate, not-yet-trained** VLA data groups for all seven goals.
+### Temporal segmentation: continuous recording → independent atomic skills
 
-## Live, phase-aware robot visual tracking
-
-**Implemented:** two measured Aria gaze-derived DINOv2 query descriptors
-(source + destination), continuous Reachy head-camera pyramidal Lucas–Kanade
-tracking with optional DINOv2 re-anchoring, and an event-driven attention
-switch **only after verified physical stable grasp**. Human and robot
-timelines are independent. Tracks and annotated robot-camera MP4 are saved
-during physical execution. The motor policy still queries privileged
-MuJoCo object geometry; this is not vision-only motor control.
-
-See **[LIVE_PHASE_TRACKING.md](LIVE_PHASE_TRACKING.md)** for the exact real
-Aria → robot execution command, outputs, and evidence boundaries.
-
-## Real Aria gaze to Reachy head-camera correspondence
-
-The key experiment now has a runnable DINOv2 feature matcher, synchronized
-gaze CSV input, head-camera image and MuJoCo oracle object-mask exporter.
-See [GAZE_CORRESPONDENCE.md](GAZE_CORRESPONDENCE.md) for commands and the
-real input paths. Do not use a gaze-circle overlay RGB for reliable DINO
-matching. Correspondence on the real capture remains to be validated.
-
-## Time-boxed first-step Aria-to-Reachy demo
-
-**Execution scope: white cube -> white bin only.** The original physical
-simulation succeeds, but the full seven-step sequence and learned real-data
-transfer are not yet experimentally verified.
-
-The runnable input/grounding/robot integration, optional real-data V-JEPA 2
-video feature extractor, trainable state probe, and trainable verb/object
-feature-pack builder are now documented in [DEMO_PIPELINE.md](DEMO_PIPELINE.md).
-
-Do not confuse synthetic interface checks with validated Aria observations.
-
-## Architecture: continuous egocentric video to skill-level episodes
-
-```mermaid
-flowchart TB
-    VIDEO["Personally collected Aria full-procedure recording"]
-    RGB["RGB frames"]
-    NAR["Narration / audio"]
-    GAZE["Calibrated gaze"]
-    DINO["Frozen DINOv2 roles + momentum event writer"]
-    ASR["Timestamped transcript and step candidates"]
-    EVID["Sparse episodic memory: events, evidence, optional captions"]
-    GRAPH["Seven-step symbolic DAG + goal predicates"]
-    ALIGN["Semantic alignment and human-reviewed episode boundaries"]
-    EP["Seven independent skill episode datasets"]
-    VLA["Per-skill VLA training interface — NOT TRAINED"]
-    TRANSFER["Measured human-to-robot DINO correspondence + live optical flow"]
-    REACHY["Reachy 2: existing cube pick/place IK controller"]
-    MEMORY["Physical outcome verification and execution memory"]
-
-    VIDEO --> RGB --> DINO --> EVID --> ALIGN
-    VIDEO --> NAR --> ASR --> ALIGN
-    VIDEO --> GAZE --> TRANSFER
-    GRAPH --> ALIGN
-    ALIGN --> EP --> VLA
-    TRANSFER --> REACHY
-    VLA -. "future trained policies" .-> REACHY
-    GRAPH --> MEMORY
-    REACHY --> MEMORY
-    MEMORY -. "next enabled step" .-> GRAPH
-```
-
-The **canonical task DAG** permits independent cube operations and independent
-container placements once their own prerequisites are satisfied:
+A continuous Aria recording is *not* seven robot training episodes by default. We distinguish **visual events** (candidate intervals from the external EST-DINO-style memory writer), **narrated action mentions** (ASR or reviewed transcript), and **verified atomic action intervals** (explicit human-reviewed boundaries). A single action can span multiple visual events.
 
 ```mermaid
 flowchart LR
-    S1["S1 White cube → white container"] --> S4["S4 White container → wooden box"]
-    S2["S2 Red cube → red container"] --> S5["S5 Red container → wooden box"]
-    S3["S3 Black cube → black container"] --> S6["S6 Black container → wooden box"]
-    S4 --> S7["S7 Push full wooden box left"]
-    S5 --> S7
-    S6 --> S7
+    A["Full Aria RGB video + gaze + audio"] --> B["Event proposals (external DINO-memory writer)"]
+    A --> C["ASR / reviewed narration"]
+    B --> D["Match visual events to action mentions"]
+    C --> D
+    G["Demonstrator-specified 7-step graph"] --> D
+    D --> E["Human review of actual action boundaries"]
+    E --> F["S1 … S7 independent episode clips and manifests"]
+    F --> H["Trainable goal-conditioned skill VLA"]
 ```
 
-There is **no direct S3 → S7 connection**; it follows transitively through S6.
-Machine-readable dependencies live in `configs/procedure_graph.json`.
+**Implemented locally:** [`full_procedure.py`](Ego2Robot_scene/full_procedure.py) recognizes narrated canonical actions; [`episode_pipeline.py`](Ego2Robot_scene/episode_pipeline.py) ingests externally produced temporal events, builds an auditable alignment review queue, and exports separate clips **only with approved start/end times**. The external DINO-momentum *automatic boundary generator is not bundled*, and the seven graph edges are not learned automatically.
 
-**Why separate events from steps?** The WACV EST-DINO momentum writer produces
-sparse goal-agnostic visual events, *not* seven magically recovered action
-segments. Narration and optional event captions supply semantic evidence.
-Reviewed alignments connect one or more visual events to a canonical skill;
-only those measured action intervals become standalone MP4 episodes. This
-preserves excluded/uncertain events in the episodic record instead of deleting
-them or assigning fabricated labels.
+### A closer look: Step 1 — white cube into white container
 
-**Train separately per skill:** each S1–S7 has its own machine-readable dataset
-group in `training_units.json`, suitable for later embodiment-specific VLA
-fine-tuning. The current implementation **prepares episode manifests/clips**
-but does not train a VLA or manufacture robot action targets from human RGB.
-Reachy's verified cube pick/place still uses physical MuJoCo + IK. Robot gaze
-uses visual correspondence and robot-phase gating, not human timestamp replay.
+<a href="data/19a5c812-520b-4f8f-89ee-9b7b0879ca23_480_gaze_red_circle.mp4"><img alt="Open the real standalone Step 1 demonstration with measured gaze" src="docs/media/step1_poster.svg" width="560"/></a>
 
-**Machine-readable sources:** [configs/procedure_graph.json](configs/procedure_graph.json)
-and [configs/multimodal_architecture.json](configs/multimodal_architecture.json).
-**Full technical walkthrough and commands:** [MULTIMODAL_EPISODES.md](MULTIMODAL_EPISODES.md).
+**[▶ Watch atomic Step 1 with measured gaze (MP4)](data/19a5c812-520b-4f8f-89ee-9b7b0879ca23_480_gaze_red_circle.mp4)** · [Clean Step 1 RGB recording](data/19a5c812-520b-4f8f-89ee-9b7b0879ca23.mp4) · [Step 1 gaze coordinates](data/19a5c812-520b-4f8f-89ee-9b7b0879ca23_gaze_xy.csv)
 
-Quick handoff from the already extracted real full plan:
+In this **single atomic skill**, human gaze attends to the **source cube**, then the **destination container**. DINOv2 transfers the two attended visual regions into the robot's head-camera view. **Robot execution is never synchronized to the human timestamps:** live robot optical flow tracks both targets, and a physically verified stable grasp triggers the source → destination attention switch.
 
-```bash
-python Ego2Robot_scene/episode_pipeline.py \
-  --plan outputs/full_procedure/<real_demo_id>_full_plan.json \
-  --dino-events /path/to/actual/fine_events.json \
-  --out outputs/skill_episodes
+## 2. End-to-end architecture: how the modalities are used
+
+```mermaid
+flowchart TB
+    ARIA["Personally recorded Project Aria demonstration"]
+    ARIA --> RGB["RGB: appearance + temporal visual evidence"]
+    ARIA --> SPEECH["Audio: ASR / reviewed language instructions"]
+    ARIA --> GAZE["Measured eye-gaze samples"]
+    RGB --> EPISODES["Candidate visual events + reviewed per-action episodes"]
+    SPEECH --> EPISODES
+    EPISODES --> GRAPH["Seven-node goal / dependency graph + episode memory"]
+    RGB --> GOAL["Human final-state goal clip → frozen Video-JEPA 2"]
+    GAZE --> DINO["Gaze-query DINOv2 matching → robot RGB tracking"]
+    GOAL --> FUSER["Trainable language + vision + gaze fusion"]
+    DINO --> FUSER
+    GRAPH --> FUSER
+    FUSER --> OPTION["Learned skill / source / destination option"]
+    FUSER --> VERIFY["Trainable next-state, completion, error heads"]
+    OPTION --> EXEC["Reachy 2 action realization: IK + gripper physics"]
+    DINO --> EXEC
+    EXEC --> ORACLE["Independent physical postcondition verification (MuJoCo oracle)"]
+    ORACLE --> GRAPH
 ```
 
-Without human-reviewed boundaries, this emits an auditable **review queue and
-untrained per-skill manifests only**. Add `--reviewed-alignments` and
-`--export-clips` once actual action intervals have been checked.
+| Component | In the repository | What the evidence supports |
+|---|---|---|
+| **RGB + eye gaze** | [`data/`](data/), [`aria_ingest.py`](Ego2Robot_scene/aria_ingest.py) | Real exported Aria MP4s and gaze CSVs available; no hand-pose pipeline. |
+| **Narration → tasks** | [`full_procedure.py`](Ego2Robot_scene/full_procedure.py) | Whisper interface + rule-based task mention extraction. ASR quality and full-recording transcripts are not benchmarked. |
+| **Temporal segmentation** | [`episode_pipeline.py`](Ego2Robot_scene/episode_pipeline.py) | Event alignment/review and real per-step clip export implemented; external automatic visual boundary writer **not** included. |
+| **Task graph and memory** | [`procedure_graph.py`](Ego2Robot_scene/procedure_graph.py), [graph JSON](configs/procedure_graph.json) | Seven canonical goals, prerequisites, and outcome-dependent state updates; graph authored from task specification. |
+| **Human gaze → robot vision** | [`transfer_aria_gaze.py`](Ego2Robot_scene/transfer_aria_gaze.py), [`live_gaze_tracker.py`](Ego2Robot_scene/live_gaze_tracker.py) | DINOv2 patch correspondence + pyramidal Lucas–Kanade + optional live re-anchoring. Real Step 1 source/destination correspondences accepted; oracle object masks are used for offline correspondence labeling. |
+| **Trainable hierarchical VLA** | [`trainable_vla.py`](Ego2Robot_scene/trainable_vla.py) | Learnable language/vision/gaze fusion and skill, target, completion, mistake, future-state heads; CPU training/inference contract passes. **No independent real-data accuracy established.** |
+| **Video-JEPA 2** | [`vjepa2_encoder.py`](Ego2Robot_scene/vjepa2_encoder.py), [`make_vla_episode_pack.py`](Ego2Robot_scene/make_vla_episode_pack.py) | Frozen pretrained video features for observation and demonstrated terminal-state goal; completion/error heads trainable separately. Not a trained Video-JEPA 2 action/world model. |
+| **Robot action and postconditions** | [`pick_place.py`](Ego2Robot_scene/pick_place.py), [`execute_demo.py`](Ego2Robot_scene/execute_demo.py) | Physical white-cube grasp, transport and placement verified in MuJoCo. IK still uses privileged object poses; remaining longer-horizon skills not demonstrated. |
+| **Distribution-shift robustness** | Proposed evaluation | No measured robustness gains or randomized-benchmark success rate claimed. |
 
-## Verified results (October 16, 2026)
+**Terminology:** the visual encoder is **Video-JEPA 2** (not VideoGPT-2). Language tokens are trainable in the hierarchical option model. Human gaze supplies cross-view semantic localization; it is **not** a direct learned 3-D object-pose estimator or the actual motor control signal.
 
-The scene, fixed-base robot and actuators compile and run on the user's Debian computer. A [GitHub Actions CPU MuJoCo rollout](https://github.com/Robotics-Imitation-Learning/ego2robot/actions) independently verifies a **physical white-cube → white-bin pick-and-place**, including:
+## 3. What is novel in this prototype?
 
-- Seven-joint right-arm IK and actuator-driven motion;
-- Contact-based grasp using Reachy's official gripper, adapted with **3 mm simulated fingertip sleeves**;
-- Approximately **13 cm stable cube lift**, held for an extra second with bilateral finger contact;
-- Physical transport, release and cube-in-bin verification from live MuJoCo state (not a scripted object teleport);
-- Grasp tip centre **10 mm above the cube centre** with a horizontal entry path.
+The research hypothesis is that a **person's first-person procedural demonstration** offers more than generic imitation frames: narration identifies *what*, gaze identifies *where*, the human terminal scene offers *what success looks like*, and the task graph records *which consequences matter*. We combine those sources into a **trainable skill-level VLA interface** that leaves embodiment-specific motor execution and verification explicit.
 
-A separate **compact right-arm layout** is IK-feasible for all three cubes; standalone red-cube physical placement has also succeeded with a narrower approach aperture. Black-cube grasp and uninterrupted three-cube execution remain under test.
+Crucially, **procedural time and motor time are separated**. Gaze descriptors select source/goal regions, Lucas–Kanade tracks those regions in *robot* frames, and Reachy's actual stable grasp changes active attention; there is no hand-designed timestamp replay. The learned model can be trained from actual observed robot pre/post states paired with a human goal clip, while physical success is checked separately. Novelty is an **architectural proposal**, not a demonstrated improvement over competing VLAs.
 
-**Not yet verified or claimed:** automatic real Aria gaze → simulated action grounding, full seven-step sequential execution, learned visual completion verification, or physical placement of the loaded bins into the wooden tray. The procedural completion checker currently uses privileged MuJoCo state (oracle). See [CHALLENGE.md](CHALLENGE.md).
+## 4. Reproduce the current implementation
 
-## Quick start: physically verified white-cube operation
+### Run the physically verified Reachy 2 skill
 
 ```bash
 git clone https://github.com/Robotics-Imitation-Learning/ego2robot.git
@@ -167,58 +113,52 @@ cd ego2robot
 python3 -m venv .ego2robot_venv
 source .ego2robot_venv/bin/activate
 pip install -r requirements.txt
-
 git clone --depth 1 https://github.com/pollen-robotics/reachy2_mujoco_assets.git
-
-# Reproducible physically dynamic cubes, bins and tray; fixed humanoid base.
 python Ego2Robot_scene/challenge_scene.py --reachy-assets ./reachy2_mujoco_assets
-
-# Optional NVIDIA offscreen rendering
-export MUJOCO_GL=egl
-
+# For headless CPU rendering, use MUJOCO_GL=osmesa after installing OSMesa.
 python Ego2Robot_scene/pick_place.py \
-  reachy2_mujoco_assets/scenes/ego2robot_challenge.xml \
-  --mode execute --record
+  reachy2_mujoco_assets/scenes/ego2robot_challenge.xml --mode execute --record
 ```
 
-Output snapshots appear in `outputs/white_cube/` (ignored by Git). Successful execution prints `PASS: physical cube-in-bin predicate satisfied.`
+The controller drives Reachy's simulated arm and physically closes the gripper around a dynamic cube. Successful execution prints `PASS: physical cube-in-bin predicate satisfied.` The experiment explicitly adds **3 mm simulated fingertip sleeves** to improve grasp of the 30 mm cube; this is disclosed and not presented as a learned improvement.
 
-For the compact, single-right-arm task layout, build a *separate* scene:
+### Inspect the complete recording and propose skill episodes
 
 ```bash
-python Ego2Robot_scene/challenge_scene.py \
-  --reachy-assets ./reachy2_mujoco_assets --layout compact
+# Requires faster-whisper and a real audio track in the recorded MP4.
+pip install faster-whisper
+python Ego2Robot_scene/full_procedure.py \
+  --video data/cda03c03-68c9-4caf-9deb-5a5fa091ab0e_480.mp4 \
+  --demo-id cda03c03-68c9-4caf-9deb-5a5fa091ab0e \
+  --asr --out outputs/full_procedure
 
-python Ego2Robot_scene/pick_place.py \
-  reachy2_mujoco_assets/scenes/ego2robot_compact.xml \
-  --object red_cube --mode execute \
-  --grasp-style side --pinch-height 0.010 \
-  --approach-open-angle 1.0 --record
+# Emits review candidates and seven per-skill manifests; does not fabricate
+# confirmed visual boundaries or substitute the task graph for evidence.
+python Ego2Robot_scene/episode_pipeline.py \
+  --plan outputs/full_procedure/cda03c03-68c9-4caf-9deb-5a5fa091ab0e_full_plan.json \
+  --out outputs/skill_episodes
 ```
 
-The original challenge scene stays intact. The copied `ego2robot_reachy2_body.xml` contains the simulated pad modifications; the official downloaded robot asset is unchanged.
+To use DINO event proposals, provide `--dino-events`; to emit video training clips, supply explicit `--reviewed-alignments` and `--export-clips` (FFmpeg required). Read [FULL_PROCEDURE.md](FULL_PROCEDURE.md) and [MULTIMODAL_EPISODES.md](MULTIMODAL_EPISODES.md) for the exact schemas.
 
-## Human demonstrations and procedural execution
+### Train and inspect the learnable VLA
 
-See [RECORDING_PROTOCOL.md](RECORDING_PROTOCOL.md): record one pilot and two complete Aria seven-step demonstrations with changed cube order, using RGB, gaze, timestamps and narration; preserve the originals privately. Grounding and language training inputs are documented in [GROUNDING.md](GROUNDING.md).
+Read **[TRAINABLE_HIERARCHICAL_VLA.md](TRAINABLE_HIERARCHICAL_VLA.md)** for commands that encode a **real final human video clip** and clean Reachy before/after images with frozen Video-JEPA 2, reuse real DINO gaze descriptors, train the lightweight PyTorch cross-modal skill policy, and run fresh robot-view inference.
 
-The structured-plan runner `Ego2Robot_scene/execute_demo.py` uses a **single persistent MuJoCo scene** and checks current state before each specified action. At present its motor executor supports the **three cube-to-bin** steps; container-packing and tray-pushing are not implemented. The task plan must be extracted/verified from a **real recording** before this is evidence of human-driven behavior.
+The repository also documents the [real gaze-to-robot pipeline](GAZE_CORRESPONDENCE.md), [live optical-flow and phase switching](LIVE_PHASE_TRACKING.md), and [per-step execution](DEMO_PIPELINE.md). Large pretrained weights and locally generated inference logs are not committed.
+
+Run contract and regression tests:
 
 ```bash
-python Ego2Robot_scene/execute_demo.py \
-  reachy2_mujoco_assets/scenes/ego2robot_compact.xml \
-  --plan data/processed/my_recorded_demo_actions.json --max-steps 3 --record
+python -m unittest discover -s tests -p 'test_*.py' -v
 ```
 
-`tests/fixtures/synthetic_plan.json` exists only for regression testing the code interface, **not** as applicant-collected data.
+GitHub Actions runs [Aria/graph tests](https://github.com/Robotics-Imitation-Learning/ego2robot/actions/workflows/aria_integration.yml), [real physical MuJoCo simulation tests](https://github.com/Robotics-Imitation-Learning/ego2robot/actions/workflows/robot_physics.yml), [gaze-flow simulation tests](https://github.com/Robotics-Imitation-Learning/ego2robot/actions/workflows/live_tracking_physics.yml), and [PyTorch trainability tests](https://github.com/Robotics-Imitation-Learning/ego2robot/actions/workflows/trainable_vla.yml). Synthetic fixtures are for **interface regression**, not reported learned generalization accuracy.
 
-## Research choices and limitations
+## 5. Evidence, limitations, and next steps
 
-1. **Hierarchical task representation:** source, verb, destination, prerequisites and expected scene postconditions, independent of robot embodiment.
-2. **Real gaze / frozen DINOv2:** use existing correspondence research rather than implementing an unvalidated pixel/colour matching substitute.
-3. **Model-based action:** Cartesian/IK controller handles morphology and joint commands without H100 training; slight object shifts can be handled by querying the live scene.
-4. **Procedural memory:** check current outcome and skip/repair incomplete goals rather than using a blind progress counter.
-5. **Reproducible and honest results:** each claimed physical success is validated by MuJoCo contact and object state. Visually grounded verification is a separate, incomplete task.
-6. **Gripper compatibility:** stock Reachy finger-collision geometry had insufficient purchase on the 30 mm cube. The 3 mm simulated sleeves are a **declared change to the physical gripper model**, not a VLA improvement.
+**Confirmed physical result:** white cube placed into the white bin in the real Aria-grounded simulation run; independent MuJoCo postcondition returned `true`; verified stable grasp caused the robot attention switch at approximately **20.4 seconds of robot simulation time**. Additional standalone red/white cases have succeeded under documented initial conditions. See [RESULTS.md](RESULTS.md) for the earlier engineering rollout record.
 
-See [CHALLENGE.md](CHALLENGE.md) for the seven goals, detailed limitations and follow-up work. Sources: [Reachy 2 MuJoCo assets](https://github.com/pollen-robotics/reachy2_mujoco_assets), [MuJoCo](https://mujoco.org/).
+**Not claimed:** full seven-step robot completion, autonomous task-graph discovery, automatic DINO boundary generation inside this repository, end-to-end learned continuous joint control, cross-view completion/error classifier accuracy, or distribution-shift improvements. The current code provides trainable components and an auditable experimental pathway to test those hypotheses.
+
+The aim is a reusable human-to-robot skill acquisition interface: **demonstrate from the first person, structure the procedure, transfer human attention and goal appearance, learn the appropriate skill, execute with robot-specific controls, and verify consequences before proceeding**.
