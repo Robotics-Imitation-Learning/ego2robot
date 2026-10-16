@@ -80,6 +80,20 @@ python smoke_test.py reachy2_mujoco_assets/scenes/ego2robot_sorting.xml --render
 
 Important: Reachy 2's *prototype SDK simulator* may have its own hardcoded default scene/viewer. **Generating a new scene file does not automatically change which scene the SDK loads.** You must point its scene loader to `ego2robot_sorting.xml`, and for SSH/headless use an offscreen stepper instead of the graphical viewer. The full Reachy SDK integration is **not implemented here**.
 
+## Head-mounted ego view (rather than a free camera)
+
+Reachy 2's upstream MJCF already contains `left_camera` and `right_camera`, rigidly mounted on the articulated `head` body. Render these directly; they move with the neck joints. No arbitrary world-space camera is needed.
+
+```bash
+python Ego2Robot_scene/head_camera_probe.py reachy2_mujoco_assets/scenes/ego2robot_lab.xml
+python Ego2Robot_scene/head_camera_probe.py reachy2_mujoco_assets/scenes/ego2robot_lab.xml \\
+  --neck-pitch 0.35 --fovy 95 --out head_looking_down.png
+```
+
+The physical Aria sensor has fisheye optics, while MuJoCo's camera is pinhole (`fovy=58` in the stock Reachy model). The `--fovy` override broadens the simulated perspective but does **not** calibrate fisheye distortion. For raw gaze correspondence, use the existing Aria calibration/rectification and DINOv2 temporal/spatial matching method on comparable projections, and validate the reprojection. Do not treat a matching angle alone as calibrated gaze transfer.
+
+The anonymous RA-L code supplement describes attention/gaze losses and VLA routing but excludes the development pipeline implementing standalone DINOv2 correspondence propagation. Reuse the actual code from the development repo instead of reimplementing that method from scratch; do not publish unpublished anonymous research sources without checking release permissions.
+
 ## Procedural memory scaffold
 
 [`task_example.json`](task_example.json) shows two semantic commands that can be generated from the human demonstration (speech + gaze + segmentation); it is an **example**, not data already extracted from Aria.
