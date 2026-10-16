@@ -64,6 +64,52 @@ def _make_dynamic(body: ET.Element, *, total_mass: float):
         geom.set("conaffinity", "1")
 
 
+# The stock Reachy fingertip boxes leave roughly 36.5 mm between their
+# inside surfaces at the measured close posture (56.5 mm pad-center gap
+# minus 2 x 10 mm pad half-width). This is wider than a 30 mm cube.
+# A 4 mm rubber sleeve on each finger creates a physically feasible pinch.
+# We copy the included MuJoCo robot-body XML; upstream assets stay untouched.
+PAD_BODY_NAMES = (
+    "r_dist_col2", "r_dist_col2_mimic",
+    "r_dist_col", "r_dist_col_mimic",
+)
+
+
+def build_fingertip_sleeves(assets_root: Path, extension_m: float) -> None:
+    """Generate a modified robot-body MJCF with explicit contact sleeves."""
+    src = assets_root / "objects" / "reachy2_body.xml"
+    dest = assets_root / "objects" / "ego2robot_reachy2_body.xml"
+    if not src.is_file():
+        raise FileNotFoundError(src)
+    tree = ET.parse(src)
+    names_found = set()
+    for body in tree.getroot().iter("body"):
+        name = body.get("name")
+        if name not in PAD_BODY_NAMES:
+            continue
+        names_found.add(name)
+        geom = next((g for g in body.findall("geom")
+                     if g.get("type") == "box"), None)
+        if geom is None:
+            raise RuntimeError(f"No collision box on fingertip {name}")
+        dimensions = [float(v) for v in geom.get("size", "").split()]
+        if len(dimensions) != 3:
+            raise RuntimeError(f"Unexpected fingertip geometry in {name}")
+        # MJCF box sizes are HALF extents. +4 mm per pad reduces the
+        # inner aperture by ~8 mm, without changing cube or bin geometry.
+        dimensions[1] += extension_m
+        geom.set("size", vec(*dimensions))
+        geom.set("friction", "2.0 0.03 0.003")
+        geom.set("condim", "4")
+    missing = set(PAD_BODY_NAMES) - names_found
+    if missing:
+        raise RuntimeError(f"Missing fingertip bodies: {sorted(missing)}")
+    ET.indent(tree, space="  ")
+    tree.write(dest, encoding="utf-8", xml_declaration=True)
+    print(f"Generated padded right gripper body: {dest} "
+          f"(each sleeve extends {extension_m * 1000:.1f} mm)")
+
+
 def make_challenge(assets_root: Path, fixed_base: bool = True) -> ET.Element:
     root = make_reachy("lab", assets_root)
     root.set("model", "ego2robot_humanoid_challenge")
@@ -128,14 +174,29 @@ def main():
                    help="Path to cloned pollen-robotics/reachy2_mujoco_assets")
     p.add_argument("--free-base", action="store_true",
                    help="Keep Reachy's root freejoint (diagnostic only)")
+    p.add_argument("--finger-pad-mm", type=float, default=4.0,
+                   help="Right fingertip collision sleeve extension in mm; 0 = stock")
     args = p.parse_args()
+    if not 0.0 <= args.finger_pad_mm <= 6.0:
+        p.error("--finger-pad-mm must be between 0 and 6")
     assets = args.reachy_assets.resolve()
     if not (assets / "scenes" / "table_scene.xml").is_file():
         raise FileNotFoundError("Missing official Reachy assets table_scene.xml")
+    # Pad geometry is a genuine change to the simulated robot end effector.
+    # Keep this modification explicit, reproducible and isolated from the
+    # original official Reachy mesh/collision asset.
+    build_fingertip_sleeves(assets, args.finger_pad_mm / 1000.0)
+    scene = make_challenge(assets, fixed_base=not args.free_base)
+    reachy = _body(scene.find("worldbody"), "reachy")
+    include = reachy.find("include[@file='../objects/reachy2_body.xml']")
+    if include is None:
+        raise RuntimeError("Cannot locate original Reachy body include")
+    include.set("file", "../objects/ego2robot_reachy2_body.xml")
     out = assets / "scenes" / "ego2robot_challenge.xml"
-    save(make_challenge(assets, fixed_base=not args.free_base), out)
+    save(scene, out)
     print(f"Scene contains 3 cubes, 3 movable bins, 1 movable wooden tray: {out}")
     print("Mobile base:", "FREE" if args.free_base else "FIXED")
+    print("Right-gripper fingertip sleeves:", args.finger_pad_mm, "mm per finger")
     print("IMPORTANT: Fixing the base does not guarantee contact-stable grasping.")
 
 
