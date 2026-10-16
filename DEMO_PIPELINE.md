@@ -149,6 +149,16 @@ This downloads Meta's released 300M-parameter ViT-L video checkpoint
       --features data/processed/vjepa2_first_step.npz \
       --output checkpoints/first_step_state.npz
 
+To attach those V-JEPA predictions to the SAME first-step experiment report,
+add the following flags to the Step 3 run_grounded.py command:
+
+    --vjepa-state-model checkpoints/first_step_state.npz \
+    --vjepa-state-features data/processed/vjepa2_first_step.npz
+
+The pipeline report then contains learned real-video state predictions, next
+to the separate physical simulator success predicate. A self-evaluation on
+the same recording is *not* generalization evidence.
+
 Train accuracy from clips in a single demo is **NOT held-out performance**.
 A genuine error detector would also require real failed executions and
 evaluation on a separate recording. This state probe is a preliminary
