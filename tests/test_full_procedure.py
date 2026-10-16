@@ -109,6 +109,25 @@ class TestFullProcedure(unittest.TestCase):
             destination = memory.save(Path(tmp) / "mem.json")
             self.assertTrue(destination.is_file())
 
+    def test_all_seven_narrated_steps_with_interchangeable_order(self):
+        # The graph order and the demonstrated order need not match.
+        sentences = [
+            "Pick up the black cube and put it in the black box.",
+            "Pick up the red cube and put it in the red box.",
+            "Pick up the white cube and put it in the white box.",
+            "Put the black container into the wooden box.",
+            "Put the red container into the wooden box.",
+            "Put the white container into the wooden box.",
+            "Push the wooden box to the left side.",
+        ]
+        rows = [{"text": sentence, "start_s": 3.0 * i,
+                 "end_s": 3.0 * (i + 1), "segment_index": i}
+                for i, sentence in enumerate(sentences)]
+        result = extract_narrated_steps(rows)
+        self.assertEqual([s["id"] for s in result],
+                         ["S3", "S2", "S1", "S6", "S5", "S4", "S7"])
+        self.assertEqual(len({s["id"] for s in result}), 7)
+
     def test_step_seven_remains_blocked_until_all_conditions(self):
         m = ProcedureMemory()
         m.update({s.goal: True for s in STEPS})
