@@ -184,15 +184,33 @@ def build_episode_package(plan, events=None, alignments=None, *, event_file=None
             raise ValueError("Narrated step not in graph: " + str(sid))
         spoken.setdefault(sid, []).append(step)
     candidates = []
+    indexed_events = {e["event_id"]: e for e in events}
     for step in STEPS:
         for mention in spoken.get(step.id, []):
+            ids = candidate_events(mention, events)
+            # Proposal is the union of actual DINO event evidence, NOT a
+            # verified action boundary or a scheduled robot time.
+            window = ({
+                "start_s": min(indexed_events[eid]["start_s"] for eid in ids),
+                "end_s": max(indexed_events[eid]["end_s"] for eid in ids),
+                "source": "union_of_observed_visual_events_NOT_VERIFIED",
+            } if ids else None)
+            excluded = [eid for eid in ids if
+                        (indexed_events[eid].get("goal_conditioned_view") or {})
+                        .get("policy") == "exclude"]
+            audit = [eid for eid in ids if
+                     (indexed_events[eid].get("goal_conditioned_view") or {})
+                     .get("policy") == "hold_out"]
             candidates.append({
                 "step_id": step.id,
                 "narration": mention.get("narration"),
                 "narration_start_s": mention.get("start_s"),
                 "narration_end_s": mention.get("end_s"),
                 "source_segments": mention.get("source_segments", []),
-                "candidate_visual_event_ids": candidate_events(mention, events),
+                "candidate_visual_event_ids": ids,
+                "proposed_visual_window_s": window,
+                "excluded_from_procedural_view_event_ids": excluded,
+                "uncertain_audit_event_ids": audit,
                 "status": "candidate_only_NOT_ACTION_BOUNDARY",
             })
     episodes = []
