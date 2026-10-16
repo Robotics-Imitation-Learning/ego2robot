@@ -173,6 +173,39 @@ Inspect `outputs/white_cube/04_grasp.png`, `05_close.png`, and
 The controller will stop on failed reach or failed lift; do not claim success
 based on static images or mere contact count.
 
+## Grasp approach diagnosis and clearance sweep
+
+The original **side approach** was kinematically reachable but stopped 64 mm
+short of its grasp target. The old target placed the lower fingertip collision
+surface about 1 mm above the tabletop; table interference is plausible but
+not yet proven. New default: side grasp with pad center raised 14 mm relative
+to the cube center. This creates ~14 mm lower-tip/table clearance while still
+overlapping the upper part of the 30 mm cube.
+
+A vertical top-down approach was investigated, but the requested high
+clearance IK pose had **115 mm** position residual and **1.342 rad**
+orientation residual. Do not use that unverified orientation in this scene.
+
+To test multiple reasonable collision clearances with *fresh MuJoCo state*,
+without editing code or repeatedly relaunching the command:
+
+```bash
+python Ego2Robot_scene/pick_place.py \
+  reachy2_mujoco_assets/scenes/ego2robot_challenge.xml \
+  --mode execute --grasp-style side --auto-clearance --record
+```
+
+The script tries pad-center offsets **8, 12, 16 and 20 mm** above cube
+center, with separate saved frames and console logs for each. It reports the
+first sampled external arm contact and aborts if actual tip tracking fails.
+A verified cube lift plus cube-in-bin predicate is required for success.
+It does NOT fabricate a grasp or teleport an object.
+
+The workflow `.github/workflows/robot_physics.yml` can also run the
+same CPU-only test in GitHub Actions, when explicitly triggered with
+workflow_dispatch by someone with repository access. As of this note no
+successful remote execution has been verified.
+
 ## First manipulation policy prototype
 
 `Ego2Robot_scene/pick_place.py` is a **new, unverified** direct-MuJoCo
