@@ -23,7 +23,7 @@ import mujoco
 from pick_place import RightArm, run as run_pick_place
 from challenge_memory import ChallengeMemory, cube_in_bin
 from phase_attention import PhaseAttention
-from procedure_graph import ProcedureMemory, STEPS, BY_ID, BY_GOAL
+from procedure_graph import ProcedureMemory, STEPS, BY_ID, BY_GOAL, GOALS
 
 ALLOWED = ("white", "red", "black")
 
@@ -127,7 +127,7 @@ def main():
             break
         step_id = graph_step_id(step)
         current, _ = memory.update(data)
-        procedural.update({k: bool(v) for k, v in current.items()},
+        procedural.update({k: bool(v) for k, v in current.items() if k in GOALS},
                           source="mujoco_pose_oracle")
         if step_id in procedural.completed():
             history.append({"step": step_id, "status": "already_verified_complete"})
@@ -174,7 +174,7 @@ def main():
         )
         passed = bool(run_pick_place(skill, runtime=(model, data, arm)))
         state, changed = memory.update(data)
-        procedural.update({k: bool(v) for k, v in state.items()},
+        procedural.update({k: bool(v) for k, v in state.items() if k in GOALS},
                           source="mujoco_pose_oracle")
         procedural.record_attempt(
             step_id, "controller_reported_success" if passed else "failed")
