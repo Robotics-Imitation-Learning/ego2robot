@@ -14,7 +14,7 @@ import re
 from pathlib import Path
 
 from aria_ingest import prepare
-from procedure_graph import STEPS, ProcedureMemory, extract_narrated_steps, read_transcript
+from procedure_graph import STEPS, GOALS, ProcedureMemory, extract_narrated_steps, read_transcript
 from grounded_plan import read_gaze_matches
 
 
@@ -139,7 +139,13 @@ def main():
     memory = ProcedureMemory()
     if a.oracle_predicates:
         observations = json.loads(a.oracle_predicates.read_text(encoding="utf-8"))
-        memory.update(observations, source="external_oracle_snapshot")
+        observations = observations.get("oracle_predicates", observations)
+        unsupported = sorted(set(observations) - GOALS)
+        if unsupported:
+            print("Noncanonical oracle fields ignored:", unsupported)
+            print("Raw tray_moved displacement does NOT verify a leftward push.")
+        memory.update({k: bool(v) for k, v in observations.items() if k in GOALS},
+                      source="external_oracle_snapshot")
     memory_file = memory.save(a.out / (manifest["demo_id"] + "_execution_memory.json"))
     print(json.dumps({"plan": str(plan_file), "graph": str(graph_file),
                       "memory": str(memory_file),
