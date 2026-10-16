@@ -10,13 +10,16 @@ transfers are used.
 
 ## Run on the actual full-procedure capture
 
-The following is the user's local video path; it is **not** included in GitHub,
-and automated transcription of that file has **not** been run remotely:
+The exported real RGB recording is now **included in this repository**
+at [`data/cda03c03-68c9-4caf-9deb-5a5fa091ab0e_480.mp4`](data/cda03c03-68c9-4caf-9deb-5a5fa091ab0e_480.mp4),
+with a separate [measured-gaze overlay](data/cda03c03-68c9-4caf-9deb-5a5fa091ab0e_480_gaze_red_circle.mp4)
+and gaze CSVs. The original VRS stream is **not** included. Automated
+transcription of the full recording has **not** been run remotely:
 
 ```bash
 pip install faster-whisper
 python Ego2Robot_scene/full_procedure.py \
-  --video /mnt/4TBSSD/Ego2Robot_Humanoid/data/Full_Procedure/mp4_480/cda03c03-68c9-4caf-9deb-5a5fa091ab0e_480.mp4 \
+  --video data/cda03c03-68c9-4caf-9deb-5a5fa091ab0e_480.mp4 \
   --demo-id cda03c03-68c9-4caf-9deb-5a5fa091ab0e \
   --asr \
   --out outputs/full_procedure
