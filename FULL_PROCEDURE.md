@@ -71,6 +71,27 @@ Output files:
   **unknown physical outcomes**, not seven presumed successes.
 - `<demo_id>_asr.json` (only with `--asr`): real extracted narration.
 
+## Connect the generated plan to the existing Reachy executor
+
+Use an actually extracted plan (not a dummy fixture), and the previously
+compiled challenge scene:
+
+```bash
+python Ego2Robot_scene/execute_demo.py \
+  reachy2_mujoco_assets/scenes/ego2robot_challenge.xml \
+  --plan outputs/full_procedure/cda03c03-68c9-4caf-9deb-5a5fa091ab0e_full_plan.json \
+  --max-steps 1 --record
+```
+
+For genuinely measured source/destination DINO descriptors, the integrated
+live-camera version also supports `--track-gaze --dino-reanchor`; both
+`query_descriptor_path` and `query_descriptor_key` are carried through
+the generated plan. See [LIVE_PHASE_TRACKING.md](LIVE_PHASE_TRACKING.md).
+The tracker uses robot-frame optical flow and robot-state-gated source →
+destination transitions, **never human video timestamps for robot motion**.
+A single-step physical success does not establish the full procedure's
+seven-step execution.
+
 ## What the graph encodes
 
 | Step | Human action / postcondition | Must follow |
