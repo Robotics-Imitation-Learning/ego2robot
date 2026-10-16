@@ -6,6 +6,7 @@ on:
       - 'Ego2Robot_scene/challenge_scene.py'
       - 'Ego2Robot_scene/execute_demo.py'
       - 'tests/fixtures/synthetic_plan.json'
+      - 'tests/fixtures/synthetic_two_step.json'
       - '.github/workflows/robot_physics.yml'
   workflow_dispatch:
 
@@ -65,6 +66,20 @@ jobs:
             grep -E 'pregrasp: IK|grasp: executed|First gripper/robot|at grasp: pinch|Cube contacts after closure:|Cube lifted by|One-second static hold|after_transport:|cube_in_bin_oracle|Task unsuccessful|PASS: physical|RuntimeError' "/tmp/compact_${color}.log" || true
             echo "COMPACT ${color} exit status: $code (exploratory)"
           done
+
+      - name: Two-step persistent state machine (synthetic fixture)
+        run: |
+          unset MUJOCO_GL
+          echo "The plan fixture is NOT actual Aria data; testing motor/state API only"
+          if python -u Ego2Robot_scene/execute_demo.py \
+              reachy2_mujoco_assets/scenes/ego2robot_compact.xml \
+              --plan tests/fixtures/synthetic_two_step.json --max-steps 2 \
+              > /tmp/two_step.log 2>&1; then
+            echo "Two sequential physical placements passed in one simulation."
+          else
+            echo "Two-step experiment still incomplete:"
+            tail -60 /tmp/two_step.log
+          fi
 
       - name: Black cube physical grasp sensitivity (diagnostic only)
         run: |
