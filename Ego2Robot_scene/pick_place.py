@@ -181,6 +181,52 @@ class RightArm:
                 count += 1
         return count
 
+    def object_contacts(self, object_name):
+        """Detailed active contacts, differentiating table from gripper."""
+        object_id = mujoco.mj_name2id(
+            self.model, mujoco.mjtObj.mjOBJ_BODY, "e2r_" + object_name
+        )
+        hits = []
+        for i in range(self.data.ncon):
+            c = self.data.contact[i]
+            b1 = int(self.model.geom_bodyid[c.geom1])
+            b2 = int(self.model.geom_bodyid[c.geom2])
+            if b1 != object_id and b2 != object_id:
+                continue
+            other = b2 if b1 == object_id else b1
+            name = mujoco.mj_id2name(
+                self.model, mujoco.mjtObj.mjOBJ_BODY, other
+            )
+            g_other = int(c.geom2) if b1 == object_id else int(c.geom1)
+            geom = mujoco.mj_id2name(
+                self.model, mujoco.mjtObj.mjOBJ_GEOM, g_other
+            )
+            hits.append({"body": name or str(other),
+                         "geom": geom or str(g_other),
+                         "distance_m": round(float(c.dist), 5)})
+        return hits
+
+    def move_joints(self, label, target, duration=3.0):
+        """Slow minimum-jerk repositioning, including joint-limit clamping."""
+        target = np.asarray(target, dtype=float).copy()
+        for i, jid in enumerate(self.jids):
+            if self.model.jnt_limited[jid]:
+                lo, hi = self.model.jnt_range[jid]
+                target[i] = np.clip(target[i], lo + 0.005, hi - 0.005)
+        start = self.q()
+        steps = max(1, int(round(duration / self.model.opt.timestep)))
+        for k in range(steps):
+            t = (k + 1) / steps
+            alpha = t * t * (3 - 2 * t)
+            self.data.ctrl[self.aids] = (1 - alpha) * start + alpha * target
+            mujoco.mj_step(self.model, self.data)
+        self.step(0.5)
+        errs = np.abs(self.q() - target)
+        print(f"{label}: max joint tracking error="
+              f"{float(np.max(errs)):.4f} rad", flush=True)
+        if float(np.max(errs)) > 0.10:
+            raise RuntimeError(f"{label}: cannot reach staged arm posture")
+
     def step(self, seconds):
         count = max(1, int(round(seconds / self.model.opt.timestep)))
         for _ in range(count):
@@ -271,6 +317,7 @@ def run(args):
     pickup_tip = cube + np.array([0.0, 0.0, 0.05])
     pregrasp = pickup_tip + np.array([-0.12, 0.0, 0.0])
     lift = pickup_tip + np.array([0.0, 0.0, 0.13])
+    high_clearance = pregrasp + np.array([0.0, 0.0, 0.20])
     phases = [
         ("pregrasp", pregrasp),
         ("grasp", pickup_tip),
@@ -297,23 +344,35 @@ def run(args):
     try:
         arm.step(0.3)
         snapshot("00_initial")
-        arm.go("pregrasp", pregrasp, rot)
-        snapshot("01_pregrasp")
-        arm.go("grasp", pickup_tip, rot)
-        snapshot("02_grasp")
+        # This exact staged route tracked to ~1 mm in the user's test.
+        # Directly commanding the low pregrasp from the hanging arm
+        # failed by 115 mm, even with a correct IK solution.
+        stage_q = np.deg2rad([40, -30, -30, -90, 0, -45, -45])
+        arm.move_joints("stage_joints", stage_q, duration=3.0)
+        snapshot("01_staged")
+        arm.go("high_clearance", high_clearance, rot, duration=3.0)
+        snapshot("02_high")
+        arm.go("pregrasp", pregrasp, rot, duration=3.0)
+        snapshot("03_pregrasp")
+        arm.go("grasp", pickup_tip, rot, duration=2.5)
+        snapshot("04_grasp")
         start_cube_z = float(source_body.xpos[2])
         arm.close_gripper()
         arm.step(1.1)
-        snapshot("03_close")
+        snapshot("05_close")
         print("Cube contact pairs immediately after closure:",
               arm.object_contact_count(source), flush=True)
+        print("Cube contacts after closure:",
+              json.dumps(arm.object_contacts(source)), flush=True)
         print("Gripper joint:",
               float(data.qpos[model.jnt_qposadr[arm.grip_jid]]), flush=True)
         arm.go("lift", lift, rot)
         arm.step(0.6)
-        snapshot("04_lift")
+        snapshot("06_lift")
         print("Cube contact pairs after lift:",
               arm.object_contact_count(source), flush=True)
+        print("Cube contacts after lift:",
+              json.dumps(arm.object_contacts(source)), flush=True)
 
         cube_after_lift = np.array(source_body.xpos)
         lift_amount = float(cube_after_lift[2] - start_cube_z)
@@ -335,17 +394,17 @@ def run(args):
         release_cube = bin_xyz + np.array([0.0, 0.0, 0.085])
         release_tip = release_cube - held_offset
         arm.go("transport", safe_tip, rot, duration=2.4)
-        snapshot("05_transport")
+        snapshot("07_transport")
         arm.go("lower_over_bin", release_tip, rot, duration=1.6)
-        snapshot("06_lower")
+        snapshot("08_lower")
         arm.open_gripper()
         arm.step(1.0)
-        snapshot("07_release")
+        snapshot("09_release")
         # Retract without hitting the container.
         retract = release_tip + np.array([-0.11, 0, 0.08])
         arm.go("retract", retract, rot, duration=1.5)
         arm.step(0.6)
-        snapshot("08_final")
+        snapshot("10_final")
 
         from challenge_memory import cube_in_bin
         success = cube_in_bin(data, source.replace("_cube", ""))
