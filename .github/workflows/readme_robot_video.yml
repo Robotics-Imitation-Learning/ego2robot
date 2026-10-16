@@ -21,7 +21,7 @@ jobs:
       - name: Install offscreen MuJoCo and FFmpeg prerequisites
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y libosmesa6 libosmesa6-dev libgl1-mesa-dev
+          sudo apt-get install -y libosmesa6 libosmesa6-dev libgl1-mesa-dev ffmpeg
           python -m pip install -r requirements.txt opencv-python-headless
       - name: Download official Reachy 2 assets and build challenge scene
         run: |
