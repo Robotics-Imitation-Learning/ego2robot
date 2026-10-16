@@ -81,6 +81,22 @@ flowchart TB
     MEMORY -. "next enabled step" .-> GRAPH
 ```
 
+The **canonical task DAG** permits independent cube operations and independent
+container placements once their own prerequisites are satisfied:
+
+```mermaid
+flowchart LR
+    S1["S1 White cube → white container"] --> S4["S4 White container → wooden box"]
+    S2["S2 Red cube → red container"] --> S5["S5 Red container → wooden box"]
+    S3["S3 Black cube → black container"] --> S6["S6 Black container → wooden box"]
+    S4 --> S7["S7 Push full wooden box left"]
+    S5 --> S7
+    S6 --> S7
+```
+
+There is **no direct S3 → S7 connection**; it follows transitively through S6.
+Machine-readable dependencies live in `configs/procedure_graph.json`.
+
 **Why separate events from steps?** The WACV EST-DINO momentum writer produces
 sparse goal-agnostic visual events, *not* seven magically recovered action
 segments. Narration and optional event captions supply semantic evidence.
