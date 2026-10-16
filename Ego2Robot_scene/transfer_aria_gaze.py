@@ -186,16 +186,25 @@ def main():
     match.add_argument("--min-margin",type=float,default=0.015)
     match.add_argument("--out",type=Path,default=Path("outputs/gaze_correspondence"))
     a=p.parse_args()
-    import cv2
+    with a.gaze_csv.open(newline="") as f:
+        csvreader=csv.DictReader(f)
+        header=csvreader.fieldnames
+        samples=[row for _,row in zip(range(3),csvreader)]
+    # Inspection of the CSV is useful even when OpenCV isn't installed in
+    # the minimal MuJoCo venv. Full matching will require OpenCV.
+    try:
+        import cv2
+    except ImportError:
+        if a.command=="inspect":
+            print(json.dumps({"columns":header,"first_rows":samples,
+                "video":str(a.video),"video_metadata":"Install opencv-python-headless for FPS/size inspection"},indent=2))
+            return
+        raise RuntimeError("Matching requires OpenCV: pip install opencv-python-headless")
     cap=cv2.VideoCapture(str(a.video))
     if not cap.isOpened(): raise RuntimeError("Could not open Aria MP4")
     fps=float(cap.get(cv2.CAP_PROP_FPS))
     count=int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
     if fps<=0 or count<=0:raise RuntimeError("Invalid video fps/frame count")
-    with a.gaze_csv.open(newline="") as f:
-        csvreader=csv.DictReader(f)
-        header=csvreader.fieldnames
-        samples=[row for _,row in zip(range(3),csvreader)]
     if a.command=="inspect":
         print(json.dumps({"columns":header,"first_rows":samples,"mp4_fps":fps,
                           "frames":count,"width":int(cap.get(3)),"height":int(cap.get(4)),
