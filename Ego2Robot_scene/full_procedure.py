@@ -84,6 +84,7 @@ def build_full_plan(manifest, transcript, gaze_matches=None, require_gaze=False)
     return {
         "demo_id": manifest["demo_id"],
         "recording_file": manifest["recording_file"],
+        "rgb_video_file": manifest.get("mp4") or manifest["recording_file"],
         "transcript_file": str(Path(transcript).resolve()),
         "input_manifest": manifest.get("_path"),
         "gaze_matches": str(gaze_matches) if gaze_matches else None,
