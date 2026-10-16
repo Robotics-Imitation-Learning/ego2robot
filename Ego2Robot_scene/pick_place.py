@@ -679,7 +679,7 @@ def main():
     parser.add_argument("--grasp-style", choices=["topdown", "side"],
                         default="side",
                         help="Reachable side pinch (default); topdown currently IK-infeasible")
-    parser.add_argument("--pinch-height", type=float, default=0.014,
+    parser.add_argument("--pinch-height", type=float, default=0.010,
                         help="Side-grasp pad-center height above cube center (m)")
     parser.add_argument("--auto-clearance", action="store_true",
                         help="Try 8, 12, 16, 20 mm pinch heights on fresh simulations")
