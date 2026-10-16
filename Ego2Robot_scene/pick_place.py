@@ -227,6 +227,46 @@ class RightArm:
         if float(np.max(errs)) > 0.10:
             raise RuntimeError(f"{label}: cannot reach staged arm posture")
 
+    def pinch_geometry(self):
+        """Return actual open-finger pinch midpoint relative to r_arm_tip.
+
+        Finger contact bodies are taken from the official Reachy MJCF.
+        This replaces the incorrect assumption that arm_tip is the pinch
+        center. The offset is measured AFTER the gripper opens/settles.
+        """
+        points = []
+        for name in ("r_prox_col2", "r_dist_col2"):
+            bid = mujoco.mj_name2id(
+                self.model, mujoco.mjtObj.mjOBJ_BODY, name
+            )
+            if bid < 0:
+                raise RuntimeError(f"Missing grasp collider body {name}")
+            idx = np.where(self.model.geom_bodyid == bid)[0]
+            if len(idx) < 1:
+                raise RuntimeError(f"No physical collider in {name}")
+            # Use center of box collision geometry, not visual mesh.
+            points.append(np.asarray(self.data.geom_xpos[int(idx[0])]).copy())
+        p1, p2 = points
+        midpoint = (p1 + p2) / 2.0
+        tip_p, tip_R = self.tip_pose()
+        offset_local = tip_R.T @ (midpoint - tip_p)
+        gap = float(np.linalg.norm(p1 - p2))
+        return offset_local, midpoint, gap, points
+
+    def pinch_debug(self, object_name, label, desired_center=None):
+        offset, center, gap, pads = self.pinch_geometry()
+        cube = np.asarray(self.data.body("e2r_" + object_name).xpos).copy()
+        err = float(np.linalg.norm(center - cube))
+        print(
+            f"{label}: pinch center={np.round(center, 4).tolist()}, "
+            f"cube center={np.round(cube, 4).tolist()}, "
+            f"pinch-to-cube={err:.4f} m, "
+            f"finger pad separation={gap:.4f} m, "
+            f"pad positions={[np.round(p,4).tolist() for p in pads]}",
+            flush=True,
+        )
+        return err
+
     def step(self, seconds):
         count = max(1, int(round(seconds / self.model.opt.timestep)))
         for _ in range(count):
@@ -326,12 +366,34 @@ def run(args):
     # for a lateral approach to a tabletop object. Here the r_arm_tip
     # target is positioned ~5 cm above cube center in that orientation.
     rot = rot_y(-np.pi / 2)
-    cube = np.asarray(source_body.xpos).copy()
-    pickup_tip = cube + np.array([0.0, 0.0, 0.05])
-    pregrasp = pickup_tip + np.array([-0.12, 0.0, 0.0])
-    lift = pickup_tip + np.array([0.0, 0.0, 0.13])
-    high_clearance = pregrasp + np.array([0.0, 0.0, 0.20])
+
+    # Pinch-center alignment must be computed in the actual MuJoCo scene,
+    # after opening the gripper. Previously we assumed arm_tip was the
+    # gripper contact center and targeted tip = cube + 5cm, which produced
+    # zero finger/cube contacts despite mm-level arm tracking.
+    def compute_targets():
+        local_pad_offset, pad_world, gap, pads = arm.pinch_geometry()
+        cube_center = np.asarray(source_body.xpos).copy()
+        desired_pinch = cube_center + np.array([0.0, 0.0, 0.003])
+        grasp_tip = desired_pinch - rot @ local_pad_offset
+        approach = grasp_tip + np.array([-0.11, 0.0, 0.0])
+        high = approach + np.array([0.0, 0.0, 0.19])
+        lifted = grasp_tip + np.array([0.0, 0.0, 0.13])
+        print(
+            "Measured open-gripper tip-to-pinch local offset:",
+            np.round(local_pad_offset, 4).tolist(),
+            "open pad separation:", round(gap, 4), "m",
+            "tip goal for pinch:", np.round(grasp_tip, 4).tolist(),
+            flush=True,
+        )
+        return grasp_tip, approach, high, lifted
+
+    # Let the gripper open to an actual physical configuration before
+    # measuring its finger pads.
+    arm.step(0.9)
+    pickup_tip, pregrasp, high_clearance, lift = compute_targets()
     phases = [
+        ("high_clearance", high_clearance),
         ("pregrasp", pregrasp),
         ("grasp", pickup_tip),
         ("lift", lift),
@@ -362,6 +424,10 @@ def run(args):
         # failed by 115 mm, even with a correct IK solution.
         stage_q = np.deg2rad([40, -30, -30, -90, 0, -45, -45])
         arm.move_joints("stage_joints", stage_q, duration=3.0)
+        arm.step(0.6)
+        # Re-measure real gripper geometry with the arm staged and fingers
+        # fully open. End-effector orientation is fixed for this prototype.
+        pickup_tip, pregrasp, high_clearance, lift = compute_targets()
         snapshot("01_staged")
         arm.go("high_clearance", high_clearance, rot, duration=3.0)
         snapshot("02_high")
@@ -369,9 +435,16 @@ def run(args):
         snapshot("03_pregrasp")
         arm.go("grasp", pickup_tip, rot, duration=2.5)
         snapshot("04_grasp")
+        pinch_err = arm.pinch_debug(source, "at grasp")
+        if pinch_err > 0.045:
+            raise RuntimeError(
+                f"Gripper pads remain {pinch_err:.3f} m from cube center; "
+                "aborting closure. Inspect 04_grasp.png and geometry."
+            )
         start_cube_z = float(source_body.xpos[2])
         arm.close_gripper()
         arm.step(1.1)
+        arm.pinch_debug(source, "after close")
         snapshot("05_close")
         print("Cube contact pairs immediately after closure:",
               arm.object_contact_count(source), flush=True)
