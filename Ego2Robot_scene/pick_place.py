@@ -381,11 +381,17 @@ def render_stage(renderer, data, folder, stage):
     Image.fromarray(renderer.render()).save(folder / f"{stage}.png")
 
 
-def run(args):
-    model = mujoco.MjModel.from_xml_path(str(args.scene.resolve()))
-    data = mujoco.MjData(model)
-    mujoco.mj_forward(model, data)
-    arm = RightArm(model, data)
+def run(args, runtime=None):
+    # The verified single-skill CLI creates its own simulator. When invoked
+    # from execute_demo.py, keep the SAME physics state and robot throughout
+    # all actions so completed placements persist across task steps.
+    if runtime is None:
+        model = mujoco.MjModel.from_xml_path(str(args.scene.resolve()))
+        data = mujoco.MjData(model)
+        mujoco.mj_forward(model, data)
+        arm = RightArm(model, data)
+    else:
+        model, data, arm = runtime
     if args.record:
         # Command Reachy's actual articulated head instead of a free camera.
         neck_aid = mujoco.mj_name2id(
