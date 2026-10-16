@@ -35,6 +35,21 @@ BIN_POS = {
 }
 TRAY_CENTER = (0.78, -0.08)
 
+# These lateral positions were selected from a measured right-arm Jacobian
+# reachability sweep: all reach/lift/transfer poses have <5mm IK residual.
+# Bins are 70mm wide and 80mm apart, fitting in the 250mm wooden tray.
+COMPACT_CUBE_POS = {
+    "white_cube": (0.43, -0.32),
+    "red_cube": (0.43, -0.24),
+    "black_cube": (0.43, -0.16),
+}
+COMPACT_BIN_POS = {
+    "white": (0.60, -0.32),
+    "red": (0.60, -0.24),
+    "black": (0.60, -0.16),
+}
+COMPACT_TRAY_CENTER = (0.78, -0.24)
+
 
 def _body(world, name: str):
     body = next((b for b in world.findall("body")
@@ -110,7 +125,8 @@ def build_fingertip_sleeves(assets_root: Path, extension_m: float) -> None:
           f"(each sleeve extends {extension_m * 1000:.1f} mm)")
 
 
-def make_challenge(assets_root: Path, fixed_base: bool = True) -> ET.Element:
+def make_challenge(assets_root: Path, fixed_base: bool = True,
+                   layout: str = "original") -> ET.Element:
     root = make_reachy("lab", assets_root)
     root.set("model", "ego2robot_humanoid_challenge")
     world = root.find("worldbody")
@@ -134,7 +150,10 @@ def make_challenge(assets_root: Path, fixed_base: bool = True) -> ET.Element:
         world.remove(_body(world, "e2r_" + name))
 
     # Set up three cube pick locations, with independent free joints.
-    for name, (x, y) in CUBE_POS.items():
+    cube_positions = COMPACT_CUBE_POS if layout == "compact" else CUBE_POS
+    bin_positions = COMPACT_BIN_POS if layout == "compact" else BIN_POS
+    tray_center = COMPACT_TRAY_CENTER if layout == "compact" else TRAY_CENTER
+    for name, (x, y) in cube_positions.items():
         cube = _body(world, "e2r_" + name)
         height = CONFIG["objects"][name]["size_m"][2]
         cube.set("pos", vec(x, y, TABLE_TOP + height / 2))
@@ -143,13 +162,13 @@ def make_challenge(assets_root: Path, fixed_base: bool = True) -> ET.Element:
     # with collision-enabled floors and four walls.
     for color in BIN_COLORS:
         body = _body(world, "e2r_" + color + "_bin")
-        x, y = BIN_POS[color]
+        x, y = bin_positions[color]
         body.set("pos", vec(x, y, TABLE_TOP))
         _make_dynamic(body, total_mass=0.12)
 
     # The outer tray is also dynamic and its floor supports the loaded bins.
     wooden = _body(world, "e2r_wooden_tray")
-    wooden.set("pos", vec(*TRAY_CENTER, TABLE_TOP))
+    wooden.set("pos", vec(*tray_center, TABLE_TOP))
     _make_dynamic(wooden, total_mass=0.34)
 
     # Record all relevant physical bodies for tracing and future gaze
@@ -174,6 +193,9 @@ def main():
                    help="Path to cloned pollen-robotics/reachy2_mujoco_assets")
     p.add_argument("--free-base", action="store_true",
                    help="Keep Reachy's root freejoint (diagnostic only)")
+    p.add_argument("--layout", choices=["original", "compact"],
+                   default="original",
+                   help="Original verified white-cube layout or compact single-arm workspace")
     p.add_argument("--finger-pad-mm", type=float, default=3.0,
                    help="Right fingertip collision sleeve extension in mm; 0 = stock")
     args = p.parse_args()
@@ -186,16 +208,20 @@ def main():
     # Keep this modification explicit, reproducible and isolated from the
     # original official Reachy mesh/collision asset.
     build_fingertip_sleeves(assets, args.finger_pad_mm / 1000.0)
-    scene = make_challenge(assets, fixed_base=not args.free_base)
+    scene = make_challenge(assets, fixed_base=not args.free_base,
+                           layout=args.layout)
     reachy = _body(scene.find("worldbody"), "reachy")
     include = reachy.find("include[@file='../objects/reachy2_body.xml']")
     if include is None:
         raise RuntimeError("Cannot locate original Reachy body include")
     include.set("file", "../objects/ego2robot_reachy2_body.xml")
-    out = assets / "scenes" / "ego2robot_challenge.xml"
+    scene_name = ("ego2robot_challenge.xml" if args.layout == "original"
+                  else "ego2robot_compact.xml")
+    out = assets / "scenes" / scene_name
     save(scene, out)
     print(f"Scene contains 3 cubes, 3 movable bins, 1 movable wooden tray: {out}")
     print("Mobile base:", "FREE" if args.free_base else "FIXED")
+    print("Layout:", args.layout)
     print("Right-gripper fingertip sleeves:", args.finger_pad_mm, "mm per finger")
     print("IMPORTANT: Fixing the base does not guarantee contact-stable grasping.")
 
