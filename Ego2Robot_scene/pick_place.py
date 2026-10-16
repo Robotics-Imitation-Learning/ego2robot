@@ -38,11 +38,25 @@ def rot_z(angle):
 
 
 def orientation_error(current, target):
-    """Small-angle world-frame SO(3) error, for Jacobian IK."""
-    return 0.5 * sum(
-        (np.cross(current[:, i], target[:, i]) for i in range(3)),
-        np.zeros(3),
-    )
+    """World-frame SO(3) logarithm: handles 180-degree pose changes.
+
+    The previous cross-product formula becomes zero at exactly 180 degrees,
+    falsely reporting correct orientation for a flipped gripper.
+    """
+    relative = np.asarray(target) @ np.asarray(current).T
+    cosine = float(np.clip((np.trace(relative) - 1) * 0.5, -1, 1))
+    angle = float(np.arccos(cosine))
+    vee = 0.5 * np.array([
+        relative[2, 1] - relative[1, 2],
+        relative[0, 2] - relative[2, 0],
+        relative[1, 0] - relative[0, 1],
+    ])
+    if angle < 1e-6:
+        return vee
+    if np.pi - angle < 1e-4:
+        values, vectors = np.linalg.eigh((relative + relative.T) * 0.5)
+        return angle * vectors[:, int(np.argmax(values))]
+    return (angle / np.sin(angle)) * vee
 
 
 class RightArm:
