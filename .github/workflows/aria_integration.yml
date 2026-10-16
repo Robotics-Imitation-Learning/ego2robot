@@ -3,6 +3,9 @@ on:
   push:
     paths:
       - 'Ego2Robot_scene/aria_ingest.py'
+      - 'Ego2Robot_scene/procedure_graph.py'
+      - 'Ego2Robot_scene/full_procedure.py'
+      - 'tests/test_full_procedure.py'
       - 'Ego2Robot_scene/grounded_plan.py'
       - 'Ego2Robot_scene/state_probe.py'
       - 'Ego2Robot_scene/run_grounded.py'
@@ -29,6 +32,6 @@ jobs:
         run: python -m pip install numpy pillow
       - name: Check syntax of all pipeline entrypoints
         run: |
-          python -m py_compile Ego2Robot_scene/aria_ingest.py Ego2Robot_scene/grounded_plan.py Ego2Robot_scene/vjepa2_encoder.py Ego2Robot_scene/state_probe.py Ego2Robot_scene/run_grounded.py Ego2Robot_scene/learn_grounding.py Ego2Robot_scene/make_grounding_pack.py Ego2Robot_scene/transfer_aria_gaze.py Ego2Robot_scene/render_gaze_reference.py Ego2Robot_scene/aria_gaze_contact_sheet.py Ego2Robot_scene/phase_attention.py
+          python -m py_compile Ego2Robot_scene/procedure_graph.py Ego2Robot_scene/full_procedure.py Ego2Robot_scene/aria_ingest.py Ego2Robot_scene/grounded_plan.py Ego2Robot_scene/vjepa2_encoder.py Ego2Robot_scene/state_probe.py Ego2Robot_scene/run_grounded.py Ego2Robot_scene/learn_grounding.py Ego2Robot_scene/make_grounding_pack.py Ego2Robot_scene/transfer_aria_gaze.py Ego2Robot_scene/render_gaze_reference.py Ego2Robot_scene/aria_gaze_contact_sheet.py Ego2Robot_scene/phase_attention.py
       - name: Run synthetic contract tests (not real-recording validation)
         run: python -m unittest discover -s tests -p 'test_*.py' -v
