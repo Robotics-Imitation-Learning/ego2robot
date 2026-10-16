@@ -60,6 +60,8 @@ def main():
                    help="Structured actions from a real Aria demonstration")
     p.add_argument("--record", action="store_true",
                    help="Save each skill stage from Reachy's head camera")
+    p.add_argument("--approach-open-angle", type=float, default=1.0,
+                   help="Gripper opening for a dense three-cube tabletop layout")
     p.add_argument("--max-steps", type=int, default=3,
                    help="Limit to supported physical cube operations")
     p.add_argument("--output", type=Path, default=Path("outputs/execution"))
@@ -112,6 +114,7 @@ def main():
             scene=args.scene, object=obj, bin=dest,
             jitter=None, mode="execute", grasp_style="side",
             pinch_height=0.010, head_pitch=0.35,
+            approach_open_angle=args.approach_open_angle,
             camera_fovy=95.0, record=args.record,
             output=str(args.output / plan["demo_id"] /
                        f"{index+1:02d}_{color}"),
