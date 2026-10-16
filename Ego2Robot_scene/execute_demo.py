@@ -23,6 +23,7 @@ import mujoco
 from pick_place import RightArm, run as run_pick_place
 from challenge_memory import ChallengeMemory, cube_in_bin
 from phase_attention import PhaseAttention
+from procedure_graph import ProcedureMemory, STEPS, BY_ID, BY_GOAL
 
 ALLOWED = ("white", "red", "black")
 
@@ -54,6 +55,41 @@ def load_plan(path):
     return payload
 
 
+def graph_step_id(row):
+    """Map legacy and new recorded plan actions to a canonical graph goal."""
+    if row.get("goal") in BY_GOAL:
+        expected = BY_GOAL[row["goal"]]
+        if (row["verb"], row["object"]) != (expected.verb, expected.object):
+            raise ValueError("Goal/action mismatch: " + str(row))
+        if row["destination"] not in (expected.destination,
+                                      "side" if expected.id == "S7" else expected.destination):
+            raise ValueError("Goal/destination mismatch: " + str(row))
+        return expected.id
+    for step in STEPS:
+        if (row["verb"], row["object"], row["destination"]) == (
+                step.verb, step.object, step.destination):
+            return step.id
+    if (row["verb"], row["object"], row["destination"]) == ("push", "wooden_tray", "side"):
+        return "S7"
+    raise ValueError("Action not in verified seven-step graph: " + str(row))
+
+
+def graph_order(rows):
+    """Stable topological scheduling; timestamps never control robot pace."""
+    remaining = list(rows)
+    ordered = []
+    while remaining:
+        pending = {graph_step_id(row) for row in remaining}
+        ready = next((row for row in remaining
+                      if not any(dep in pending
+                                 for dep in BY_ID[graph_step_id(row)].requires)), None)
+        if ready is None:
+            raise ValueError("Cyclic or unschedulable narrated steps")
+        ordered.append(ready)
+        remaining.remove(ready)
+    return ordered
+
+
 def main():
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("scene", type=Path)
@@ -74,6 +110,7 @@ def main():
     mujoco.mj_forward(model, data)
     arm = RightArm(model, data)
     memory = ChallengeMemory.from_data(data)
+    procedural = ProcedureMemory()
 
     print("Demo ID:", plan["demo_id"])
     print("Real recording referenced:", plan["recording_file"])
@@ -84,9 +121,21 @@ def main():
     history = []
     max_steps = max(0, args.max_steps)
 
-    for index, step in enumerate(plan["steps"]):
+    for index, step in enumerate(graph_order(plan["steps"])):
         if len(history) >= max_steps:
             print("Stopped at --max-steps", max_steps)
+            break
+        step_id = graph_step_id(step)
+        current, _ = memory.update(data)
+        procedural.update({k: bool(v) for k, v in current.items()},
+                          source="mujoco_pose_oracle")
+        if step_id in procedural.completed():
+            history.append({"step": step_id, "status": "already_verified_complete"})
+            continue
+        if step_id not in {s.id for s in procedural.enabled()}:
+            print("BLOCKED by unmet physical preconditions:", step_id,
+                  BY_ID[step_id].requires)
+            history.append({"step": step_id, "status": "blocked_missing_precondition"})
             break
         verb = step["verb"]
         obj = step["object"]
@@ -108,6 +157,7 @@ def main():
                             "goal": f"{color}_cube_in_bin"})
             continue
 
+        procedural.record_attempt(step_id, "started")
         print(f"EXECUTING DEMONSTRATED STEP {index + 1}: "
               f"{verb}({obj}, {dest})", flush=True)
         # The same simulated robot and object positions persist between steps.
@@ -124,6 +174,10 @@ def main():
         )
         passed = bool(run_pick_place(skill, runtime=(model, data, arm)))
         state, changed = memory.update(data)
+        procedural.update({k: bool(v) for k, v in state.items()},
+                          source="mujoco_pose_oracle")
+        procedural.record_attempt(
+            step_id, "controller_reported_success" if passed else "failed")
         history.append({"step": index + 1, "action": [verb, obj, dest],
                         "verified_success": passed,
                         "robot_phase_switch_s": (phase_attention.switched_at_robot_s
@@ -144,11 +198,14 @@ def main():
         "visual_state_probe": plan.get("visual_state_probe", None),
         "executed_steps": history,
         "final_oracle_state": memory.state(data),
+        "final_procedural_memory": procedural.snapshot(),
+        "verified_graph_goal_ids": sorted(procedural.completed()),
         "note": "Oracle verification, not learned visual state estimation.",
     }
     destination = args.output / plan["demo_id"] / "summary.json"
     destination.parent.mkdir(parents=True, exist_ok=True)
     destination.write_text(json.dumps(summary, indent=2))
+    procedural.save(destination.parent / "procedural_memory.json")
     print(json.dumps(summary, indent=2))
     print("Saved", destination)
     if any(item.get("verified_success") is False for item in history):
