@@ -22,6 +22,7 @@ import mujoco
 
 from pick_place import RightArm, run as run_pick_place
 from challenge_memory import ChallengeMemory, cube_in_bin
+from phase_attention import PhaseAttention
 
 ALLOWED = ("white", "red", "black")
 
@@ -110,12 +111,14 @@ def main():
         print(f"EXECUTING DEMONSTRATED STEP {index + 1}: "
               f"{verb}({obj}, {dest})", flush=True)
         # The same simulated robot and object positions persist between steps.
+        phase_attention = PhaseAttention.from_step(step) if step.get("phase_correspondence") else None
         skill = argparse.Namespace(
             scene=args.scene, object=obj, bin=dest,
             jitter=None, mode="execute", grasp_style="side",
             pinch_height=0.010, head_pitch=0.35,
             approach_open_angle=args.approach_open_angle,
             camera_fovy=95.0, record=args.record,
+            phase_attention=phase_attention,
             output=str(args.output / plan["demo_id"] /
                        f"{index+1:02d}_{color}"),
         )
@@ -123,6 +126,10 @@ def main():
         state, changed = memory.update(data)
         history.append({"step": index + 1, "action": [verb, obj, dest],
                         "verified_success": passed,
+                        "robot_phase_switch_s": (phase_attention.switched_at_robot_s
+                                                 if phase_attention else None),
+                        "phase_log": (str(Path(skill.output)/"phase_attention.json")
+                                      if phase_attention else None),
                         "oracle_goal": state[f"{color}_cube_in_bin"],
                         "state_changes": changed})
         if not passed:
