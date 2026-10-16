@@ -52,3 +52,9 @@ jobs:
             grep -E 'pregrasp: IK|grasp: executed|Cube lifted by|One-second static hold|after_transport:|cube_in_bin_oracle|Task unsuccessful|PASS: physical|Traceback|RuntimeError' "/tmp/${color}.log" || true
             echo "${color} exit status: $code (non-blocking feasibility probe)"
           done
+
+      - name: Measure right-arm feasible tabletop band
+        run: |
+          unset MUJOCO_GL
+          python -u Ego2Robot_scene/workspace_probe.py \
+            reachy2_mujoco_assets/scenes/ego2robot_challenge.xml
