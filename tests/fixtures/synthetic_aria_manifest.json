@@ -1,0 +1,6 @@
+{
+  "demo_id": "ci_synthetic_first_step",
+  "recording_file": "SYNTHETIC_TEST_NOT_REAL_ARIA_DATA",
+  "transcript": "tests/fixtures/synthetic_aria_transcript.json",
+  "eye_gaze_projection": "SYNTHETIC_FIXTURE"
+}
