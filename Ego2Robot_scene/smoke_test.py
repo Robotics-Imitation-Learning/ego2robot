@@ -31,7 +31,7 @@ def main():
         print('Stepped 500 frames without a physics error')
     if args.render:
         from PIL import Image
-        renderer = mujoco.Renderer(model, height=600, width=800)
+        renderer = mujoco.Renderer(model, height=480, width=640)
         renderer.update_scene(data, camera='e2r_overhead')
         out = args.scene.parent / (args.scene.stem + '_mujoco.png')
         Image.fromarray(renderer.render()).save(out)
