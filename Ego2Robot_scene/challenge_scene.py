@@ -49,6 +49,12 @@ COMPACT_BIN_POS = {
     "black": (0.60, -0.16),
 }
 COMPACT_TRAY_CENTER = (0.78, -0.24)
+STAGGERED_CUBE_POS = {
+    **COMPACT_CUBE_POS,
+    # Black starts closer to the robot, in a laterally verified reachable band.
+    # Red is 8cm away in x; the destinations stay in the same three-bin row.
+    "black_cube": (0.35, -0.24),
+}
 
 
 def _body(world, name: str):
@@ -150,9 +156,15 @@ def make_challenge(assets_root: Path, fixed_base: bool = True,
         world.remove(_body(world, "e2r_" + name))
 
     # Set up three cube pick locations, with independent free joints.
-    cube_positions = COMPACT_CUBE_POS if layout == "compact" else CUBE_POS
-    bin_positions = COMPACT_BIN_POS if layout == "compact" else BIN_POS
-    tray_center = COMPACT_TRAY_CENTER if layout == "compact" else TRAY_CENTER
+    if layout == "compact-staggered":
+        cube_positions = STAGGERED_CUBE_POS
+    elif layout == "compact":
+        cube_positions = COMPACT_CUBE_POS
+    else:
+        cube_positions = CUBE_POS
+    compact = layout in ("compact", "compact-staggered")
+    bin_positions = COMPACT_BIN_POS if compact else BIN_POS
+    tray_center = COMPACT_TRAY_CENTER if compact else TRAY_CENTER
     for name, (x, y) in cube_positions.items():
         cube = _body(world, "e2r_" + name)
         height = CONFIG["objects"][name]["size_m"][2]
@@ -193,7 +205,7 @@ def main():
                    help="Path to cloned pollen-robotics/reachy2_mujoco_assets")
     p.add_argument("--free-base", action="store_true",
                    help="Keep Reachy's root freejoint (diagnostic only)")
-    p.add_argument("--layout", choices=["original", "compact"],
+    p.add_argument("--layout", choices=["original", "compact", "compact-staggered"],
                    default="original",
                    help="Original verified white-cube layout or compact single-arm workspace")
     p.add_argument("--finger-pad-mm", type=float, default=3.0,
@@ -215,8 +227,11 @@ def main():
     if include is None:
         raise RuntimeError("Cannot locate original Reachy body include")
     include.set("file", "../objects/ego2robot_reachy2_body.xml")
-    scene_name = ("ego2robot_challenge.xml" if args.layout == "original"
-                  else "ego2robot_compact.xml")
+    scene_name = {
+        "original": "ego2robot_challenge.xml",
+        "compact": "ego2robot_compact.xml",
+        "compact-staggered": "ego2robot_staggered.xml",
+    }[args.layout]
     out = assets / "scenes" / scene_name
     save(scene, out)
     print(f"Scene contains 3 cubes, 3 movable bins, 1 movable wooden tray: {out}")
