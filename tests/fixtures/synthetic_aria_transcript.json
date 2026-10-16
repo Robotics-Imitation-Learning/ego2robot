@@ -1,0 +1,10 @@
+{
+  "segments": [
+    {
+      "start_s": 0.25,
+      "end_s": 1.75,
+      "text": "Pick up the white cube and put it in the white container."
+    }
+  ],
+  "note": "SYNTHETIC interface test only"
+}
