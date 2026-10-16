@@ -25,7 +25,8 @@ def robot_contacts(model, data):
         n1 = mujoco.mj_id2name(model, mujoco.mjtObj.mjOBJ_BODY, b1) or str(b1)
         n2 = mujoco.mj_id2name(model, mujoco.mjtObj.mjOBJ_BODY, b2) or str(b2)
         a, b = sorted((n1, n2))
-        if "r_" in a or "r_" in b or "hand" in a or "hand" in b:
+        if (a.startswith("r_") or b.startswith("r_")
+                or a.startswith("right_") or b.startswith("right_")):
             hit[f"{a} <-> {b}"] += 1
     return hit
 
