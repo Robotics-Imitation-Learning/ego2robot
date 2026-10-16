@@ -109,7 +109,7 @@ EST-DINO-style `events` or `fine_events` arrays, with
 `event_id`, `start_seconds`, `end_seconds`, `boundary_method`,
 optional `parent_context_id`, `role_evidence`, `evidence`,
 `caption`, and `goal_conditioned_view`. Events without declared
-boundary-method provenance remain marked `unverified_external_events`—they
+boundary-method provenance remain marked `unverified_external_events` - they
 are **not** silently relabeled DINO results.
 
 ## Run on your personally collected video
@@ -152,7 +152,7 @@ and populate `demo_id` plus actual reviewed intervals:
 }
 ```
 
-Each real row to add must contain `step_id` (S1–S7),
+Each real row to add must contain `step_id` (S1-S7),
 `start_s` and `end_s` measured on the human video timeline,
 `status: "reviewed"`, `reviewed_by`, and optionally
 `event_ids`. No example/fabricated timing is included here.
@@ -208,7 +208,7 @@ python -m unittest discover -s tests -p 'test_*.py' -v
 All tests use **synthetic interface fixtures only**, including any test
 timestamps and mocked episode IDs. They validate serialization, evidence
 provenance, exact S7 prerequisites, reviewed-interval safeguards, and
-untrained-policy status—not segmentation accuracy, robotic policy accuracy,
+untrained-policy status - not segmentation accuracy, robotic policy accuracy,
 or real-video grounding.
 
 **Design choices:** preserve full episodic history; do not force one DINO
