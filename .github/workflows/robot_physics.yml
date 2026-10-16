@@ -109,6 +109,26 @@ jobs:
             echo "Black isolated exit status: $code"
           done
 
+      - name: Staggered black-cube source test
+        run: |
+          unset MUJOCO_GL
+          python Ego2Robot_scene/challenge_scene.py \
+            --reachy-assets reachy2_mujoco_assets --layout compact-staggered
+          for height in 0.010 0.012; do
+            echo "=== STAGGERED BLACK grasp height ${height} ==="
+            if python -u Ego2Robot_scene/pick_place.py \
+                reachy2_mujoco_assets/scenes/ego2robot_staggered.xml \
+                --object black_cube --mode execute \
+                --approach-open-angle 1.0 --pinch-height "$height" \
+                > /tmp/staggered_black.log 2>&1; then
+              rc=0
+            else
+              rc=$?
+            fi
+            grep -E 'pregrasp: IK|grasp: executed|Cube lifted by|One-second static hold|after_transport:|cube_in_bin_oracle|GRASP NOT|RuntimeError|PASS: physical' /tmp/staggered_black.log || true
+            echo "Black staggered result: $rc"
+          done
+
       - name: Measure right-arm feasible tabletop band
         run: |
           unset MUJOCO_GL
