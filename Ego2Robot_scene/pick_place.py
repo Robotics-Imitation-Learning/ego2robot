@@ -716,7 +716,9 @@ def main():
         else:
             raise SystemExit("All tested clearances failed. Inspect first-contact logs.")
     else:
-        run(args)
+        result = run(args)
+        if args.mode == "execute" and not result:
+            raise SystemExit(2)
 
 
 if __name__ == "__main__":
