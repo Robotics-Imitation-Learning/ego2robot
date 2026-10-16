@@ -16,6 +16,8 @@ from pathlib import Path
 from aria_ingest import prepare
 from procedure_graph import STEPS, GOALS, ProcedureMemory, extract_narrated_steps, read_transcript
 from grounded_plan import read_gaze_matches
+from episode_pipeline import (load_events, load_alignments, build_episode_package,
+                              export_clips, write_json)
 
 
 def attach_correspondence(rows, path, *, require_gaze=False):
@@ -110,6 +112,12 @@ def main():
     p.add_argument("--gaze-matches", type=Path, help="Actual calibrated/DINO per-object match event JSON")
     p.add_argument("--require-gaze", action="store_true", help="Fail if any narrated step lacks ordered gaze pair")
     p.add_argument("--out", type=Path, default=Path("outputs/full_procedure"))
+    p.add_argument("--dino-events", type=Path,
+                   help="External EST-DINO memory event JSON; optional, never fabricated")
+    p.add_argument("--reviewed-alignments", type=Path,
+                   help="Human-reviewed full-action intervals, required for per-step clips")
+    p.add_argument("--export-episode-clips", action="store_true",
+                   help="Extract only reviewed actions to separate video episodes")
     p.add_argument("--oracle-predicates", type=Path,
                    help="Optional JSON observation snapshot, never inferred from narration")
     a = p.parse_args()
@@ -149,7 +157,25 @@ def main():
         memory.update({k: bool(v) for k, v in observations.items() if k in GOALS},
                       source="external_oracle_snapshot")
     memory_file = memory.save(a.out / (manifest["demo_id"] + "_execution_memory.json"))
+    visual_events, _ = load_events(a.dino_events)
+    reviewed = load_alignments(a.reviewed_alignments, manifest["demo_id"], visual_events)
+    episode_package = build_episode_package(
+        plan, visual_events, reviewed, event_file=a.dino_events)
+    if a.export_episode_clips:
+        if not a.reviewed_alignments:
+            p.error("--export-episode-clips requires --reviewed-alignments")
+        export_clips(episode_package, a.out / "episodes")
+    episodes_path = write_json(a.out / "episodes" / "episode_manifest.json", episode_package)
+    training_path = write_json(a.out / "episodes" / "training_units.json", {
+        "schema_version": episode_package["schema_version"],
+        "demo_id": episode_package["demo_id"],
+        "training_units": episode_package["training_units"],
+        "note": "Per-step VLA interfaces only; no robot action supervision or trained policy.",
+    })
     print(json.dumps({"plan": str(plan_file), "graph": str(graph_file),
+                      "episodes": str(episodes_path), "training_units": str(training_path),
+                      "reviewed_episode_count": len(reviewed),
+                      "external_visual_event_count": len(visual_events),
                       "memory": str(memory_file),
                       "narrated_steps": plan["narrated_goal_ids"],
                       "missing_narration": plan["not_identified_in_narration"],
