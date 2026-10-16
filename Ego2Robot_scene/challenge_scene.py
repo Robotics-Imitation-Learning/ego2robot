@@ -49,6 +49,11 @@ COMPACT_BIN_POS = {
     "black": (0.60, -0.16),
 }
 COMPACT_TRAY_CENTER = (0.78, -0.24)
+SPACED_CUBE_POS = {
+    "white_cube": (0.43, -0.40),
+    "red_cube": (0.43, -0.24),
+    "black_cube": (0.43, -0.12),
+}
 STAGGERED_CUBE_POS = {
     **COMPACT_CUBE_POS,
     # Black starts closer to the robot, in a laterally verified reachable band.
@@ -156,13 +161,15 @@ def make_challenge(assets_root: Path, fixed_base: bool = True,
         world.remove(_body(world, "e2r_" + name))
 
     # Set up three cube pick locations, with independent free joints.
-    if layout == "compact-staggered":
+    if layout == "compact-spaced":
+        cube_positions = SPACED_CUBE_POS
+    elif layout == "compact-staggered":
         cube_positions = STAGGERED_CUBE_POS
     elif layout == "compact":
         cube_positions = COMPACT_CUBE_POS
     else:
         cube_positions = CUBE_POS
-    compact = layout in ("compact", "compact-staggered")
+    compact = layout in ("compact", "compact-staggered", "compact-spaced")
     bin_positions = COMPACT_BIN_POS if compact else BIN_POS
     tray_center = COMPACT_TRAY_CENTER if compact else TRAY_CENTER
     for name, (x, y) in cube_positions.items():
@@ -205,7 +212,7 @@ def main():
                    help="Path to cloned pollen-robotics/reachy2_mujoco_assets")
     p.add_argument("--free-base", action="store_true",
                    help="Keep Reachy's root freejoint (diagnostic only)")
-    p.add_argument("--layout", choices=["original", "compact", "compact-staggered"],
+    p.add_argument("--layout", choices=["original", "compact", "compact-staggered", "compact-spaced"],
                    default="original",
                    help="Original verified white-cube layout or compact single-arm workspace")
     p.add_argument("--finger-pad-mm", type=float, default=3.0,
@@ -231,6 +238,7 @@ def main():
         "original": "ego2robot_challenge.xml",
         "compact": "ego2robot_compact.xml",
         "compact-staggered": "ego2robot_staggered.xml",
+        "compact-spaced": "ego2robot_spaced.xml",
     }[args.layout]
     out = assets / "scenes" / scene_name
     save(scene, out)
