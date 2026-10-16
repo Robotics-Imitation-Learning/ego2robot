@@ -109,7 +109,7 @@ evaluated with the existing calibrated workflow.
 
 ## Motor control diagnosis (2026-10-16)
 
-The first rollouts found successful IK but **12–27 cm end-effector
+The first rollouts found successful IK but **12-27 cm end-effector
 tracking errors** and zero actual cube lift. Four cube contact pairs do NOT
 imply a valid grip. This is currently a MOTOR EXECUTION issue, not evidence
 that the high-level visual grounding is wrong.
@@ -206,7 +206,7 @@ same CPU-only test in GitHub Actions, when explicitly triggered with
 workflow_dispatch by someone with repository access. As of this note no
 successful remote execution has been verified.
 
-## Verified physical execution results — 16 October 2026
+## Verified physical execution results: 16 October 2026
 
 **Core grasp/placement blocker RESOLVED for white cube.** GitHub Actions CPU
 MuJoCo runs have verified actual physical pickup, stable retention, transfer,
