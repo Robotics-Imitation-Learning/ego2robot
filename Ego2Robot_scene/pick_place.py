@@ -85,6 +85,9 @@ class RightArm:
             raise RuntimeError("Missing right hand gripper")
         self.scratch = mujoco.MjData(model)
         self.base_initial = np.array(data.body("reachy").xpos).copy()
+        self.frame_callback = None
+        self.frame_interval_s = 0.20
+        self.last_frame_s = -1e10
         self.initialize_controls()
 
     def initialize_controls(self):
@@ -221,6 +224,12 @@ class RightArm:
                          "distance_m": round(float(c.dist), 5)})
         return hits
 
+    def sample_camera_if_due(self):
+        if (self.frame_callback is not None and
+                self.data.time - self.last_frame_s >= self.frame_interval_s):
+            self.last_frame_s = float(self.data.time)
+            self.frame_callback()
+
     def move_joints(self, label, target, duration=3.0):
         """Slow minimum-jerk repositioning, including joint-limit clamping."""
         target = np.asarray(target, dtype=float).copy()
@@ -235,6 +244,7 @@ class RightArm:
             alpha = t * t * (3 - 2 * t)
             self.data.ctrl[self.aids] = (1 - alpha) * start + alpha * target
             mujoco.mj_step(self.model, self.data)
+            self.sample_camera_if_due()
         self.step(0.5)
         errs = np.abs(self.q() - target)
         print(f"{label}: max joint tracking error="
@@ -308,6 +318,7 @@ class RightArm:
         count = max(1, int(round(seconds / self.model.opt.timestep)))
         for _ in range(count):
             mujoco.mj_step(self.model, self.data)
+            self.sample_camera_if_due()
         mujoco.mj_forward(self.model, self.data)
 
     def go(self, label, xyz, orientation, duration=2.0):
@@ -331,6 +342,7 @@ class RightArm:
             desired_q = (1 - alpha) * start + alpha * target_q
             self.data.ctrl[self.aids] = desired_q
             mujoco.mj_step(self.model, self.data)
+            self.sample_camera_if_due()
             if label == "grasp" and k % 15 == 0:
                 e = float(np.max(np.abs(self.q() - desired_q)))
                 peak_tracking_error = max(peak_tracking_error, e)
@@ -411,6 +423,9 @@ def run(args, runtime=None):
     source_body = data.body("e2r_" + source)
     bin_body = data.body("e2r_" + destination)
     phase_attention = getattr(args, "phase_attention", None)
+    track_gaze = bool(getattr(args, "track_gaze", False))
+    if track_gaze and phase_attention is None:
+        raise RuntimeError("Live gaze tracking requires a real grounded phase plan")
     if phase_attention is not None:
         if phase_attention.source != source or phase_attention.destination != destination:
             raise RuntimeError("Phase target labels disagree with physical motor command")
@@ -518,15 +533,62 @@ def run(args, runtime=None):
 
     images = None
     folder = Path(args.output)
-    if args.record:
+    if args.record or track_gaze:
         folder.mkdir(parents=True, exist_ok=True)
         images = mujoco.Renderer(model, height=480, width=640)
 
+    tracker = None
+    gaze_video = None
+    if track_gaze:
+        from live_gaze_tracker import LiveGazeTracker
+        tracker = LiveGazeTracker(
+            phase_attention.correspondences,
+            dino_reanchor=bool(getattr(args, "dino_reanchor", False)))
+        if args.record:
+            import cv2
+            gaze_video = cv2.VideoWriter(
+                str(folder / "robot_live_attention.mp4"),
+                cv2.VideoWriter_fourcc(*"mp4v"), 5., (640, 480))
+            if not gaze_video.isOpened():
+                print("WARN: Could not open robot_live_attention.mp4 encoder", flush=True)
+                gaze_video.release()
+                gaze_video = None
+
+        def observe_robot_rgb():
+            images.update_scene(data, camera="left_camera")
+            rgb = images.render().copy()
+            observed = tracker.update(rgb, data.time, phase_attention.phase)
+            phase_attention.update_live(observed["targets"], data.time)
+            if gaze_video is not None:
+                import cv2
+                visual = rgb.copy()
+                for phase in ("source", "destination"):
+                    item = observed["targets"][phase]
+                    xy = item["robot_xy"]
+                    if xy is not None:
+                        active = phase == phase_attention.phase
+                        color = (255, 240, 0) if active else (65, 185, 255)
+                        center = (int(round(xy[0])), int(round(xy[1])))
+                        cv2.circle(visual, center, 11 if active else 5,
+                                   color, 3 if active else 2)
+                info = (f"Robot t={data.time:.1f}s | "
+                        f"ACTIVE: {phase_attention.active_target} "
+                        f"| {phase_attention.tracking_method}")
+                cv2.putText(visual, info, (12, 25), cv2.FONT_HERSHEY_SIMPLEX,
+                            0.52, (255, 240, 0), 2, cv2.LINE_AA)
+                gaze_video.write(cv2.cvtColor(visual, cv2.COLOR_RGB2BGR))
+
+        # Bootstrap from the CURRENT physical Reachy camera, not from an
+        # assumed fixed head image. Both source and goal are tracked.
+        observe_robot_rgb()
+        arm.frame_callback = observe_robot_rgb
+        arm.last_frame_s = float(data.time)
+
     def snapshot(name):
-        if images is not None:
+        if images is not None and args.record:
             render_stage(images, data, folder, name)
         if phase_attention is not None:
-            raw = folder / f"{name}.png" if images is not None else None
+            raw = folder / f"{name}.png" if (images is not None and args.record) else None
             phase_attention.snapshot(name, data.time, raw)
 
     try:
@@ -714,6 +776,11 @@ def run(args, runtime=None):
                                     data.time, verified=bool(success))
         return bool(success)
     finally:
+        arm.frame_callback = None
+        if gaze_video is not None:
+            gaze_video.release()
+        if tracker is not None:
+            tracker.save(folder / "live_gaze_tracking.json")
         if phase_attention is not None:
             phase_attention.save(folder / "phase_attention.json")
         if images is not None:
@@ -743,6 +810,10 @@ def main():
                         metavar=("DX", "DY"),
                         help="Randomization test: initial object displacement (m)")
     parser.add_argument("--record", action="store_true")
+    parser.add_argument("--track-gaze", action="store_true",
+                        help="Track both real-gaze-grounded targets in live Reachy head RGB")
+    parser.add_argument("--dino-reanchor", action="store_true",
+                        help="Use real Aria DINO queries to re-anchor optical flow periodically")
     parser.add_argument("--head-pitch", type=float, default=0.35,
                         help="Physical Reachy neck joint target for recordings")
     parser.add_argument("--camera-fovy", type=float, default=95.0,

@@ -4,18 +4,27 @@
 
 A lightweight, reproducible Humanoid internship research challenge prototype. Research question: **can a humanoid execute a multi-step task by transferring human-derived object/goal correspondence and procedure, while retaining a small embodiment-specific motor controller and explicit task-state memory?**
 
-## Full seven-step procedural reasoning (new)
+## Full seven-step egocentric procedure and symbolic memory
 
-The full personally recorded egocentric procedure can now be transcribed,
-aligned to a **demonstrator-specified DAG**, and passed to persistent
-execution memory with live postcondition reconciliation.
-See [FULL_PROCEDURE.md](FULL_PROCEDURE.md) for the actual recorded MP4 path,
-one-command CPU Whisper invocation, seven-node graph and test commands.
+See [FULL_PROCEDURE.md](FULL_PROCEDURE.md): one-command real MP4 narration
+extraction, the user-verified seven-step causal graph, optional measured
+gaze evidence and persistent execution-memory reconciliation. The DAG and
+gaze queries drive procedural decisions independently of robot time.
+Only cube-to-bin motor skills are currently implemented; a seven-step
+physical rollout is **not** claimed.
 
-This is a full **semantic procedure and memory** implementation, not a claim
-of successful seven-step robotic execution. The physical Reachy controller
-still supports only cube-to-bin operations. Human video times are never
-replayed as robot action times.
+## Live, phase-aware robot visual tracking
+
+**Implemented:** two measured Aria gaze-derived DINOv2 query descriptors
+(source + destination), continuous Reachy head-camera pyramidal Lucas–Kanade
+tracking with optional DINOv2 re-anchoring, and an event-driven attention
+switch **only after verified physical stable grasp**. Human and robot
+timelines are independent. Tracks and annotated robot-camera MP4 are saved
+during physical execution. The motor policy still queries privileged
+MuJoCo object geometry; this is not vision-only motor control.
+
+See **[LIVE_PHASE_TRACKING.md](LIVE_PHASE_TRACKING.md)** for the exact real
+Aria → robot execution command, outputs, and evidence boundaries.
 
 ## Real Aria gaze to Reachy head-camera correspondence
 

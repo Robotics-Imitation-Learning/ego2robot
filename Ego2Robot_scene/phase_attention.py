@@ -18,6 +18,8 @@ class PhaseAttention:
         self.events = []
         self.frames = []
         self.switched_at_robot_s = None
+        self.live_targets = None
+        self.last_visual_robot_s = None
 
     @classmethod
     def from_step(cls, step):
@@ -27,8 +29,24 @@ class PhaseAttention:
     def active_target(self):
         return self.source if self.phase == "source" else self.destination
 
+    def update_live(self, targets, robot_time_s):
+        self.live_targets = targets
+        self.last_visual_robot_s = float(robot_time_s)
+
+    @property
+    def tracking_method(self):
+        if self.live_targets is None:
+            return "static_offline_reference"
+        return self.live_targets.get(self.phase, {}).get("method","unavailable")
+
     @property
     def robot_xy(self):
+        if self.live_targets is not None:
+            item = self.live_targets.get(self.phase,{})
+            if not item.get("valid"):
+                return None
+            xy = item.get("robot_xy")
+            return tuple(map(float,xy)) if xy is not None else None
         item = self.correspondences.get(self.phase) or {}
         xy = item.get("robot_xy")
         if not isinstance(xy, (list, tuple)) or len(xy) != 2:
@@ -46,6 +64,7 @@ class PhaseAttention:
             "verified": bool(verified), "attention_phase": self.phase,
             "active_target": self.active_target,
             "robot_xy": list(self.robot_xy) if self.robot_xy is not None else None,
+            "tracking_method":self.tracking_method,
         }
         if measurements:
             entry["robot_measurements"] = measurements
@@ -57,6 +76,7 @@ class PhaseAttention:
             "stage": str(stage), "robot_time_s": float(robot_time_s),
             "attention_phase": self.phase, "active_target": self.active_target,
             "robot_xy": list(self.robot_xy) if self.robot_xy is not None else None,
+            "tracking_method":self.tracking_method,
         }
         self.frames.append(row)
         if raw_image is not None and self.robot_xy is not None:
@@ -82,6 +102,8 @@ class PhaseAttention:
             "source": self.source, "destination": self.destination,
             "attention_switch_rule": "verified_physical_stable_grasp",
             "clock_alignment": "none; human times only index source RGB",
+            "live_optical_flow_enabled":self.live_targets is not None,
+            "last_robot_camera_update_s":self.last_visual_robot_s,
             "robot_target_label_source": "DINO/gaze with oracle MuJoCo object-mask association",
             "sim_time_s_at_switch": self.switched_at_robot_s,
             "current_phase": self.phase, "correspondences": self.correspondences,

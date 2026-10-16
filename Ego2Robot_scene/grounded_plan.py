@@ -13,8 +13,7 @@ from pathlib import Path
 COLORS=("white","red","black")
 from procedure_graph import STEPS, BY_ID
 
-# Same canonical prerequisites as the full-procedure planner, retaining the
-# legacy goal-name representation expected by first-step plans.
+# Keep the first-step goal-name contract while reusing the full DAG.
 TASK_GRAPH = [
     {"goal": step.goal, "object": step.object,
      "destination": step.destination,
@@ -100,7 +99,9 @@ def build_plan(manifest,transcript,gaze_matches=None,allow_narration_only=False,
                         "human_observation_time_s":float(observation["timestamp_s"]),
                         "robot_xy":observation.get("robot_xy"),
                         "score":float(observation["score"]),
-                        "raw_cosine":observation.get("raw_cosine")}
+                        "raw_cosine":observation.get("raw_cosine"),
+                        "query_descriptor_path":observation.get("query_descriptor_path"),
+                        "query_descriptor_key":observation.get("query_descriptor_key")}
             src=phase_target(observed_source,row["object"])
             dst=phase_target(observed_dest,row["destination"])
             row["phase_correspondence"]={

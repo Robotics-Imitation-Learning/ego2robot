@@ -99,11 +99,17 @@ def main():
                    help="Save each skill stage from Reachy's head camera")
     p.add_argument("--approach-open-angle", type=float, default=None,
                    help="Optional narrower gripper for compact layout; original uses stock full opening")
+    p.add_argument("--track-gaze", action="store_true",
+                   help="Track Aria-grounded visual targets in live Reachy head RGB")
+    p.add_argument("--dino-reanchor", action="store_true",
+                   help="Re-localize using real Aria DINO query descriptors")
     p.add_argument("--max-steps", type=int, default=3,
                    help="Limit to supported physical cube operations")
     p.add_argument("--output", type=Path, default=Path("outputs/execution"))
     args = p.parse_args()
     plan = load_plan(args.plan)
+    if args.dino_reanchor and not args.track_gaze:
+        p.error("--dino-reanchor requires --track-gaze")
 
     model = mujoco.MjModel.from_xml_path(str(args.scene.resolve()))
     data = mujoco.MjData(model)
@@ -169,6 +175,7 @@ def main():
             approach_open_angle=args.approach_open_angle,
             camera_fovy=95.0, record=args.record,
             phase_attention=phase_attention,
+            track_gaze=args.track_gaze, dino_reanchor=args.dino_reanchor,
             output=str(args.output / plan["demo_id"] /
                        f"{index+1:02d}_{color}"),
         )
