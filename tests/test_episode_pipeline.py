@@ -1,5 +1,6 @@
 """Synthetic contract tests for per-skill episode interfaces, never real-data results."""
 import json
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -136,6 +137,41 @@ class TestEpisodePipeline(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d:
             with self.assertRaisesRegex(ValueError, "No human-reviewed"):
                 export_clips(x, Path(d))
+
+    def test_rgb_derivative_preserved_and_instruction_semantics(self):
+        plan = fake_plan()
+        plan["rgb_video_file"] = "/private/ACTUAL_RGB_DERIVATIVE.mp4"
+        package = build_episode_package(plan, alignments=[{
+            "episode_id": "ci_fake_S2_01", "step_id": "S2",
+            "start_s": 1.0, "end_s": 6.0, "event_ids": [],
+            "annotation_status": "human_reviewed", "reviewed_by": "tester",
+        }])
+        self.assertEqual(package["source_video"], plan["rgb_video_file"])
+        self.assertEqual(package["episodes"][0]["source_video"], plan["rgb_video_file"])
+        self.assertEqual(package["training_units"][1]["instruction"],
+                         "Pick up the red cube and place it in the red container.")
+        self.assertEqual(package["training_units"][6]["instruction"],
+                         "Push the fully packed wooden box to the left.")
+
+    def test_end_to_end_full_procedure_cli_creates_candidate_queue(self):
+        # Original source fixtures are synthetic; no real Aria outcomes implied.
+        with tempfile.TemporaryDirectory() as tmp:
+            command = [
+                sys.executable, str(ROOT / "Ego2Robot_scene" / "full_procedure.py"),
+                "--manifest", str(ROOT / "tests" / "fixtures" /
+                                  "synthetic_aria_manifest.json"),
+                "--out", tmp,
+            ]
+            result = subprocess.run(command, cwd=ROOT, capture_output=True,
+                                    text=True, check=True)
+            self.assertIn('"reviewed_episode_count": 0', result.stdout)
+            package = json.loads(
+                (Path(tmp) / "episodes" / "episode_manifest.json").read_text())
+            self.assertEqual(len(package["training_units"]), 7)
+            self.assertEqual(len(package["episodes"]), 0)
+            self.assertTrue(package["candidates"])
+            self.assertTrue(all(unit["vla_training_status"] == "not_trained"
+                                for unit in package["training_units"]))
 
     def test_plan_graph_mismatch_refused(self):
         broken = fake_plan()
