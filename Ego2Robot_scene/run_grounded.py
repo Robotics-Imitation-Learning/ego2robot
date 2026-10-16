@@ -13,6 +13,7 @@ import numpy as np
 from grounded_plan import build_plan
 from learn_grounding import scores
 from state_probe import predict as visual_state_predict
+from trainable_vla import infer as infer_hierarchical_vla
 
 def predict_learned(model_path,feature_path):
     model=np.load(model_path,allow_pickle=False)
@@ -39,6 +40,12 @@ def main():
                    help="Run live robot head-camera pyramidal optical flow")
     p.add_argument("--dino-reanchor",action="store_true",
                    help="Re-anchor using measured human gaze DINO descriptors")
+    p.add_argument("--hierarchical-vla-model",type=Path,
+                   help="Optional trained Video-JEPA2+gaze+language skill/state checkpoint")
+    p.add_argument("--hierarchical-vla-features",type=Path,
+                   help="Actual same-episode current/goal/Aria-gaze representation pack")
+    p.add_argument("--hierarchical-vla-index",type=int,default=0,
+                   help="Feature sample index; 0 typically denotes current pre-step state")
     p.add_argument("--vjepa-state-model",type=Path,
                    help="Previously trained preliminary incomplete/complete ridge probe")
     p.add_argument("--vjepa-state-features",type=Path,
@@ -69,6 +76,25 @@ def main():
             if prediction["class"]!=st[key]:
                 raise RuntimeError(f"ABSTAIN: learned {role}={prediction['class']} disagrees with narration/gaze {st[key]}")
     plan["learned_grounding"]=inference
+    if bool(a.hierarchical_vla_model)!=bool(a.hierarchical_vla_features):
+        p.error("Supply both --hierarchical-vla-model and --hierarchical-vla-features")
+    if a.hierarchical_vla_model:
+        option=infer_hierarchical_vla(a.hierarchical_vla_model,
+                   a.hierarchical_vla_features,a.hierarchical_vla_index)
+        plan["hierarchical_vla_prediction"]=option
+        if not option["graph_valid"]:
+            raise RuntimeError("ABSTAIN: learned atomic action violates known task graph")
+        predicted=(option["skill"],option["source"],option["destination"])
+        confirmed=(st["verb"],st["object"],st["destination"])
+        if predicted!=confirmed:
+            raise RuntimeError(f"ABSTAIN: learned action {predicted} contradicts real Aria gaze/narrated step {confirmed}")
+        # The model selects a valid executable OPTION; the grounding evidence
+        # provides a safety cross-check. Robot joint movements remain IK-based.
+        st["policy_source"]="trainable_hierarchical_vla_with_human_gaze_cross_check"
+        st["learned_option"]=list(predicted)
+        plan["policy_type"]="trainable_VJEPA2_gaze_language_option_with_fixed_robot_skills"
+    else:
+        plan["policy_type"]="untrained_rule_based_grounding_baseline"
     if bool(a.vjepa_state_model)!=bool(a.vjepa_state_features):
         p.error("Both --vjepa-state-model and --vjepa-state-features are required")
     if a.vjepa_state_model:
@@ -83,13 +109,16 @@ def main():
             "ridge_scores":raw_scores.tolist(),
             "interpretation":"Preliminary V-JEPA 2 first-step state classifications; NOT MuJoCo physical success verification",
         }
-    plan["first_step_policy"]="frozen visual representations + optional trained ridge classifiers -> parametric IK"
+    plan["first_step_policy"]=plan["policy_type"]+" -> physically verified parameterized IK"
     a.out.mkdir(parents=True,exist_ok=True)
     path=a.out / (manifest["demo_id"]+"_grounded_plan.json")
     path.write_text(json.dumps(plan,indent=2))
     print("Human-derived action:",st["verb"],st["object"],"->",st["destination"])
     print("Grounding source:",plan["pipeline_label"])
     print("Learned heads validated:",list(inference))
+    if plan.get("hierarchical_vla_prediction"):
+        print("LEARNED VLA OPTION:",plan["hierarchical_vla_prediction"]["goal_predicate"],
+              "goal completion score:",round(plan["hierarchical_vla_prediction"]["completion_unvalidated_score"],3))
     print("Saved grounded plan",path,flush=True)
     if a.run_sim:
         if not a.scene or not a.scene.is_file():
