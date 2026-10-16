@@ -70,6 +70,7 @@ class RightArm:
         if min(self.grip_aid, self.grip_jid) < 0:
             raise RuntimeError("Missing right hand gripper")
         self.scratch = mujoco.MjData(model)
+        self.base_initial = np.array(data.body("reachy").xpos).copy()
         self.initialize_controls()
 
     def initialize_controls(self):
@@ -159,7 +160,12 @@ class RightArm:
             np.array([-0.3, -0.7, 0.2, -1.25, 0.0, 0.0, 0.0]),
         ]
         candidates = [self.solve(xyz, orientation, seed=seed) for seed in seeds]
-        return min(candidates, key=lambda item: item[1] + 0.10 * item[2])
+        # Prefer solutions continuous with the *current* arm posture,
+        # rather than picking a distant IK branch with the same tip pose.
+        return min(candidates, key=lambda item: (
+            item[1] + 0.10 * item[2]
+            + 0.01 * np.linalg.norm(item[0] - current)
+        ))
 
     def object_contact_count(self, object_name):
         """Number of current MuJoCo contact pairs involving the object."""
@@ -202,7 +208,25 @@ class RightArm:
         self.step(0.35)
         actual, _ = self.tip_pose()
         err = float(np.linalg.norm(actual - xyz))
-        print(f"{label}: executed tip error={err:.3f} m", flush=True)
+        qerr = np.abs(self.q() - target_q)
+        base_drift = float(np.linalg.norm(
+            np.array(self.data.body("reachy").xpos) - self.base_initial
+        ))
+        print(
+            f"{label}: executed tip error={err:.3f} m, "
+            f"max joint error={np.max(qerr):.3f} rad, "
+            f"base drift={base_drift:.3f} m, "
+            f"tip actual={np.round(actual, 3).tolist()}, "
+            f"joint errors={np.round(qerr, 3).tolist()}",
+            flush=True
+        )
+        # Aborting here prevents a poorly tracked arm from blindly closing
+        # its gripper on the table and attributing floor contact to grasp.
+        if err > 0.045:
+            raise RuntimeError(
+                f"{label}: tip tracking error {err:.3f} m. "
+                "Do not execute grasp; inspect base drift and joint errors."
+            )
         return err
 
 
