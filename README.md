@@ -4,6 +4,18 @@
 
 A lightweight, reproducible Humanoid internship research challenge prototype. Research question: **can a humanoid execute a multi-step task by transferring human-derived object/goal correspondence and procedure, while retaining a small embodiment-specific motor controller and explicit task-state memory?**
 
+## Time-boxed first-step Aria-to-Reachy demo
+
+**Execution scope: white cube -> white bin only.** The original physical
+simulation succeeds, but the full seven-step sequence and learned real-data
+transfer are not yet experimentally verified.
+
+The runnable input/grounding/robot integration, optional real-data V-JEPA 2
+video feature extractor, trainable state probe, and trainable verb/object
+feature-pack builder are now documented in [DEMO_PIPELINE.md](DEMO_PIPELINE.md).
+
+Do not confuse synthetic interface checks with validated Aria observations.
+
 ## Architecture
 
 ```
