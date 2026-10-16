@@ -22,10 +22,15 @@ def parse_narration(text):
     w=re.findall(r"[a-z]+",text.lower())
     if "push" in w and "tray" in w:
         return {"verb":"push","object":"wooden_tray","destination":"side"}
-    color=next((c for c in COLORS if c in w),None)
+    mentioned=[c for c in COLORS if c in w]
+    if len(mentioned)>1:
+        raise ValueError("Multiple different colours in one action; explicit source/target annotation required")
+    color=mentioned[0] if mentioned else None
     if color is None or not any(v in w for v in ("pick","put","place","move","transfer","insert","drop")):
         return None
     if "cube" in w or "block" in w:
+        if not any(x in w for x in ("box","bin","container")):
+            return None  # Source only: never invent a destination
         return {"verb":"pick_place","object":f"{color}_cube","destination":f"{color}_bin"}
     if "tray" in w and any(x in w for x in ("box","bin","container")):
         return {"verb":"pick_place","object":f"{color}_bin","destination":"wooden_tray"}
