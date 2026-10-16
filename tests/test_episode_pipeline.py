@@ -72,6 +72,11 @@ class TestEpisodePipeline(unittest.TestCase):
             self.assertEqual(es[0]["boundary_method"], "dino_momentum")
             self.assertEqual(es[0]["role_evidence"], {"interaction": "cache:a"})
             self.assertEqual(candidate_events(fake_plan()["steps"][0], es), ["E01"])
+            package = build_episode_package(fake_plan(), es)
+            proposed = package["candidates"][0]
+            self.assertEqual(proposed["proposed_visual_window_s"]["start_s"], 1.0)
+            self.assertEqual(proposed["proposed_visual_window_s"]["end_s"], 5.0)
+            self.assertEqual(proposed["status"], "candidate_only_NOT_ACTION_BOUNDARY")
             p.write_text(json.dumps([{"start_s": 1, "end_s": 3}]))
             es, _ = load_events(p)
             self.assertEqual(es[0]["boundary_method"], "unverified_external_events")
