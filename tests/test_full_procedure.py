@@ -71,7 +71,8 @@ class TestFullProcedure(unittest.TestCase):
             ]}))
             matches = root / "matches.json"
             matches.write_text(json.dumps({"events": [
-                {"target": "white_cube", "timestamp_s": 2.5, "score": 0.91},
+                {"target": "white_cube", "timestamp_s": 2.5, "score": 0.91,
+                 "query_descriptor_path": "synthetic_query.npz", "query_descriptor_key": "q0"},
                 {"target": "white_bin", "timestamp_s": 4.5, "score": 0.82},
             ]}))
             plan = build_full_plan({"demo_id": "fixture",
@@ -81,6 +82,7 @@ class TestFullProcedure(unittest.TestCase):
             self.assertIn("robot_verified_stable_grasp", phase["activation"])
             self.assertNotIn("robot_switch_time_s", phase)
             self.assertEqual(phase["source"]["human_observation_time_s"], 2.5)
+            self.assertEqual(phase["source"]["query_descriptor_key"], "q0")
             matches.write_text(json.dumps({"events": [
                 {"target": "white_bin", "timestamp_s": 2.5, "score": 0.91},
                 {"target": "white_cube", "timestamp_s": 4.5, "score": 0.82},
