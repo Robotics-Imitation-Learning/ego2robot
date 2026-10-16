@@ -1,0 +1,32 @@
+# Virtual environments and Python caches
+.ego2robot_venv/
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# Large local environments, checkpoints, recordings, and caches
+reachy2_mujoco_assets/
+reachy2_mujoco/
+data/raw/
+data/private/
+checkpoints/
+*.vrs
+*.pt
+*.pth
+*.ckpt
+*.h5
+*.hdf5
+
+# Generated output (recreated by scene_builder.py)
+Ego2Robot_scene/generated/
+outputs/
+results/
+*.mp4
+
+# Local settings
+.env
+.DS_Store
+.idea/
+.vscode/
