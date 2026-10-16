@@ -48,6 +48,19 @@ class TestAriaPipeline(unittest.TestCase):
             file.write_text("frame_idx,gaze_x_px,gaze_y_px\n0,240,240\n10,250,246\n")
             a=read_rows(file,"gaze_x_px","gaze_y_px",framecol="frame_idx",fps=10)
             self.assertEqual(a[:,0].tolist(),[0.0,1.0])
+            # Actual Aria projected CSV has a 'valid' column. Invalid
+            # sample rows must not reach correspondence inference.
+            aria_csv=Path(d)/"actual_schema.csv"
+            aria_csv.write_text(
+                "frame_idx,mp4_device_time_ns,gaze_time_ns,delta_ms,valid,x_480,y_480\n"
+                "0,3257356640362,3257356736887,0.096525,True,277.14,297.92\n"
+                "1,3257456640950,3257456736887,0.095937,False,272.85,294.77\n"
+                "2,3257556641575,3257556736887,0.095312,True,273.13,293.14\n"
+            )
+            samples=read_rows(aria_csv,"x_480","y_480",framecol="frame_idx",fps=10)
+            self.assertEqual(samples.shape,(2,3))
+            self.assertEqual(samples[:,0].tolist(),[0.0,0.2])
+            self.assertAlmostEqual(samples[0,1],277.14)
             sq,m=letterbox(Image.new("RGB",(480,480)),518)
             px,py,xy=gaze_to_square(240,240,(480,480),m,"pixel")
             self.assertAlmostEqual(px,259,delta=1)
