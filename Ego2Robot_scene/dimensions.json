@@ -1,37 +1,123 @@
 {
-  "notes": "Provisional measurements from user's photo and approximate dimensions, all lengths in meters; edit before precise physical matching. Wooden tray dimensions interpreted as outside. 3 bins span the 25 cm side.",
+  "notes": "Provisional measurements from user's photo and approximate dimensions, all lengths in meters; edit before precise physical matching. Wooden tray dimensions interpreted as outside. 3 bins span the 25 cm side. The new 'lab' preset keeps the outer tray empty behind the bins, with all six objects loose on the tabletop; proportions remain approximate.",
   "dimensions_m": {
     "table_top_z": 0.625,
     "crate_center_x": 0.73,
-    "crate_center_y": 0.0,
+    "crate_center_y": 0,
     "crate_depth_x": 0.15,
     "crate_width_y": 0.25,
     "crate_wall_thickness": 0.004,
     "crate_floor_thickness": 0.006,
     "crate_wall_height": 0.055,
-    "bin_depth_x": 0.10,
+    "bin_depth_x": 0.1,
     "bin_width_y": 0.07,
     "bin_wall_thickness": 0.003,
     "bin_floor_thickness": 0.003,
     "bin_wall_height": 0.038,
     "bin_pitch_y": 0.0775,
     "sorting_pickup_x": 0.48,
-    "sorting_pickup_y": 0.15
+    "sorting_pickup_y": 0.15,
+    "lab_crate_center_x": 0.91,
+    "lab_bin_center_x": 0.7,
+    "lab_bin_pitch_y": 0.18
   },
   "objects": {
-    "red_cube": {"shape": "box", "size_m": [0.03, 0.03, 0.03], "color": "red", "mass_kg": 0.03},
-    "black_cube": {"shape": "box", "size_m": [0.03, 0.03, 0.03], "color": "black", "mass_kg": 0.03},
-    "white_cube": {"shape": "box", "size_m": [0.03, 0.03, 0.03], "color": "white", "mass_kg": 0.03},
-    "red_cuboid": {"shape": "box", "size_m": [0.043, 0.03, 0.03], "color": "red", "mass_kg": 0.04},
-    "white_cuboid": {"shape": "box", "size_m": [0.043, 0.03, 0.03], "color": "white", "mass_kg": 0.04},
-    "white_cylinder": {"shape": "cylinder", "size_m": [0.03, 0.03], "color": "cream", "mass_kg": 0.025}
+    "red_cube": {
+      "shape": "box",
+      "size_m": [
+        0.03,
+        0.03,
+        0.03
+      ],
+      "color": "red",
+      "mass_kg": 0.03
+    },
+    "black_cube": {
+      "shape": "box",
+      "size_m": [
+        0.03,
+        0.03,
+        0.03
+      ],
+      "color": "black",
+      "mass_kg": 0.03
+    },
+    "white_cube": {
+      "shape": "box",
+      "size_m": [
+        0.03,
+        0.03,
+        0.03
+      ],
+      "color": "white",
+      "mass_kg": 0.03
+    },
+    "red_cuboid": {
+      "shape": "box",
+      "size_m": [
+        0.043,
+        0.03,
+        0.03
+      ],
+      "color": "red",
+      "mass_kg": 0.04
+    },
+    "white_cuboid": {
+      "shape": "box",
+      "size_m": [
+        0.043,
+        0.03,
+        0.03
+      ],
+      "color": "white",
+      "mass_kg": 0.04
+    },
+    "white_cylinder": {
+      "shape": "cylinder",
+      "size_m": [
+        0.03,
+        0.03
+      ],
+      "color": "cream",
+      "mass_kg": 0.025
+    }
   },
   "rgba": {
-    "wood": [0.62, 0.43, 0.25, 1.0],
-    "red": [0.87, 0.08, 0.10, 1.0],
-    "white": [0.94, 0.94, 0.90, 1.0],
-    "black": [0.095, 0.10, 0.12, 1.0],
-    "cream": [0.92, 0.89, 0.77, 1.0],
-    "table": [0.76, 0.76, 0.74, 1.0]
+    "wood": [
+      0.62,
+      0.43,
+      0.25,
+      1
+    ],
+    "red": [
+      0.87,
+      0.08,
+      0.1,
+      1
+    ],
+    "white": [
+      0.94,
+      0.94,
+      0.9,
+      1
+    ],
+    "black": [
+      0.095,
+      0.1,
+      0.12,
+      1
+    ],
+    "cream": [
+      0.92,
+      0.89,
+      0.77,
+      1
+    ],
+    "table": [
+      0.76,
+      0.76,
+      0.74,
+      1
+    ]
   }
 }
