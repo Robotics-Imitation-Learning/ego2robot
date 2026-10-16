@@ -170,3 +170,20 @@ GitHub Actions runs [Aria/graph tests](https://github.com/Robotics-Imitation-Lea
 **Not claimed:** full seven-step robot completion, autonomous task-graph discovery, automatic DINO boundary generation inside this repository, end-to-end learned continuous joint control, cross-view completion/error classifier accuracy, or distribution-shift improvements. The current code provides trainable components and an auditable experimental pathway to test those hypotheses.
 
 The aim is a reusable human-to-robot skill acquisition interface: **demonstrate from the first person, structure the procedure, transfer human attention and goal appearance, learn the appropriate skill, execute with robot-specific controls, and verify consequences before proceeding**.
+
+## 6. References and acknowledgements
+
+This prototype builds on the following open research tools and hardware/simulation resources. We cite the versions **actually used** rather than claiming additional models were integrated:
+
+- **Project Aria** — Meta's first-person sensing platform used to collect the RGB and eye-gaze demonstrations. [Project Aria](https://www.projectaria.com/) · [Project Aria Tools](https://github.com/facebookresearch/projectaria_tools).
+- **Video-JEPA 2** — frozen pretrained video representations for the current observation and demonstrated goal-state encoding. [Official implementation](https://github.com/facebookresearch/vjepa2) · [Model checkpoint](https://huggingface.co/facebook/vjepa2-vitl-fpc64-256).
+- **DINOv2** — the visual descriptor backbone used for human-gaze-to-robot correspondence (specifically `dinov2_vits14_reg`); **DINOv3 is not used**. [Official implementation](https://github.com/facebookresearch/dinov2).
+- **Reachy 2 and MuJoCo** — humanoid embodiment and physics simulation. [Reachy 2 MuJoCo assets](https://github.com/pollen-robotics/reachy2_mujoco_assets) · [MuJoCo](https://mujoco.org/).
+
+### Research works informing the design
+
+The following research motivates the procedural representation, conditional visual grounding and cross-embodiment learning direction. Their concepts inform the prototype; the results of these papers are **not** presented as evaluations of this repository.
+
+1. **Towards Neuro-Symbolic Procedural Reasoning for Long-Horizon Vision-Language-Action Manipulation.** [Publication / citation record](https://scholar.google.com/citations?view_op=view_citation&hl=en&user=jeREfqcAAAAJ&citation_for_view=jeREfqcAAAAJ:Se3iqnhoufwC).
+2. **What Matters, When? Diagnosing and Improving Conditional Visual Grounding in Visuomotor Imitation Policies.** [Publication / citation record](https://scholar.google.com/citations?view_op=view_citation&hl=en&user=jeREfqcAAAAJ&citation_for_view=jeREfqcAAAAJ:UebtZRa9Y70C).
+3. **A Framework for Egocentric and Exocentric Procedural Understanding via Temporal Segmentation and Semantic Abstraction.** [Publication / citation record](https://scholar.google.com/citations?view_op=view_citation&hl=en&user=jeREfqcAAAAJ&citation_for_view=jeREfqcAAAAJ:hqOjcs7Dif8C).
