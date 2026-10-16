@@ -4,6 +4,8 @@ on:
     paths:
       - 'Ego2Robot_scene/pick_place.py'
       - 'Ego2Robot_scene/challenge_scene.py'
+      - 'Ego2Robot_scene/execute_demo.py'
+      - 'tests/fixtures/synthetic_plan.json'
       - '.github/workflows/robot_physics.yml'
   workflow_dispatch:
 
@@ -33,6 +35,14 @@ jobs:
             --object white_cube --mode execute --grasp-style side \
             --pinch-height 0.010 2>&1 | tee /tmp/white.log
           grep -q 'PASS: physical cube-in-bin predicate satisfied.' /tmp/white.log
+
+      - name: Check annotated-task runner interface (synthetic fixture only)
+        run: |
+          unset MUJOCO_GL
+          python -u Ego2Robot_scene/execute_demo.py \
+            reachy2_mujoco_assets/scenes/ego2robot_challenge.xml \
+            --plan tests/fixtures/synthetic_plan.json --max-steps 1
+          # Fixture is NOT user data; this checks only API/physical control.
 
       - name: Probe all cube colours in the compact layout
         run: |
