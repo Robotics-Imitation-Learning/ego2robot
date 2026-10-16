@@ -1,0 +1,23 @@
+{
+  "demo_id": "ci_synthetic_red_white",
+  "recording_file": "SYNTHETIC_ENGINEERING_FIXTURE_NOT_REAL_ARIA_DATA",
+  "note": "Only for order-dependent physical execution regression, not applicant-collected data.",
+  "steps": [
+    {
+      "index": 1,
+      "verb": "pick_place",
+      "object": "red_cube",
+      "destination": "red_bin",
+      "start_s": 0,
+      "end_s": 4
+    },
+    {
+      "index": 2,
+      "verb": "pick_place",
+      "object": "white_cube",
+      "destination": "white_bin",
+      "start_s": 4,
+      "end_s": 8
+    }
+  ]
+}
