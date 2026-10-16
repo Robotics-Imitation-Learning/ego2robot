@@ -104,9 +104,10 @@ class RightArm:
                 self.data.ctrl[aid] = self.data.qpos[self.model.jnt_qposadr[jid]]
         self.open_gripper()
 
-    def open_gripper(self):
+    def open_gripper(self, target=None):
+        low, high = self.model.jnt_range[self.grip_jid]
         self.data.ctrl[self.grip_aid] = float(
-            self.model.jnt_range[self.grip_jid, 1]
+            high if target is None else np.clip(target, low, high)
         )
 
     def close_gripper(self):
@@ -474,8 +475,11 @@ def run(args, runtime=None):
         )
         return grasp_tip, approach, high, lifted
 
-    # Let the gripper open to an actual physical configuration before
-    # measuring its finger pads.
+    # The wide fully open hand can hit adjacent cubes in dense scenes.
+    # Optionally approach with just enough aperture for a 30mm cube.
+    arm.open_gripper(getattr(args, "approach_open_angle", None))
+    # Let the gripper reach its actual physical configuration before
+    # measuring the opposing finger pads.
     arm.step(0.9)
     pickup_tip, pregrasp, high_clearance, lift = compute_targets()
     phases = [
@@ -685,6 +689,8 @@ def main():
     parser.add_argument("--grasp-style", choices=["topdown", "side"],
                         default="side",
                         help="Reachable side pinch (default); topdown currently IK-infeasible")
+    parser.add_argument("--approach-open-angle", type=float, default=None,
+                        help="Optional narrower initial gripper opening in radians")
     parser.add_argument("--pinch-height", type=float, default=0.010,
                         help="Side-grasp pad-center height above cube center (m)")
     parser.add_argument("--auto-clearance", action="store_true",
@@ -701,6 +707,8 @@ def main():
     args = parser.parse_args()
     if not -0.7 <= args.head_pitch <= 0.7:
         parser.error("--head-pitch must be within the Reachy neck joint range")
+    if args.approach_open_angle is not None and not 0 <= args.approach_open_angle <= 2.27:
+        parser.error("--approach-open-angle must be 0..2.27 rad")
     if not 0 <= args.pinch_height <= 0.025:
         parser.error("--pinch-height must be between 0 and 0.025 m")
     if not 1 < args.camera_fovy < 170:
