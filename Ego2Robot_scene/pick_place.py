@@ -554,6 +554,25 @@ def run(args):
                   "success claimed.", flush=True)
             return False
 
+        # A transient upward kick or scoop is not a stable grasp.
+        # Hold the hand stationary for one second and require the cube
+        # to remain elevated AND touching both opposing finger branches.
+        arm.step(1.0)
+        held_z = float(source_body.xpos[2] - start_cube_z)
+        contacts_now = arm.object_contacts(source)
+        contact_bodies = {c["body"] for c in contacts_now}
+        left = any("mimic" not in name and name.startswith("r_")
+                   for name in contact_bodies)
+        right = any("mimic" in name and name.startswith("r_")
+                    for name in contact_bodies)
+        print("One-second static hold: cube rise=", round(held_z, 4),
+              "m; bilateral finger contact=", left and right,
+              "contacts=", sorted(contact_bodies), flush=True)
+        if held_z < 0.035 or not (left and right):
+            print("GRASP NOT STABLE: cube did not remain firmly held. "
+                  "No transfer attempted.", flush=True)
+            return False
+
         # Re-observe the actual held cube-to-gripper displacement rather
         # than assuming the object is perfectly centered in the gripper.
         tip, _ = arm.tip_pose()
