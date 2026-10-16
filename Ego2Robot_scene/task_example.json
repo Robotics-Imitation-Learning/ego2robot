@@ -1,0 +1,8 @@
+{
+  "human_demo": "replace_with_your_aria_recording_id",
+  "task": "sort_cubes_into_matching_bins",
+  "steps": [
+    {"index": 0, "action": "pick_and_place", "object": "red_cube", "destination": "red_bin", "source": "human_rgb_gaze_narration", "status": "pending"},
+    {"index": 1, "action": "pick_and_place", "object": "black_cube", "destination": "black_bin", "source": "human_rgb_gaze_narration", "status": "pending"}
+  ]
+}
