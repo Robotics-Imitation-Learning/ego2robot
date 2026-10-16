@@ -81,7 +81,7 @@ Output files:
 | S4 | White container → wooden box; `white_bin_in_tray` | S1 |
 | S5 | Red container → wooden box; `red_bin_in_tray` | S2 |
 | S6 | Black container → wooden box; `black_bin_in_tray` | S3 |
-| S7 | Push wooden box to human's left; `tray_moved` | S3, S4, S5, S6 |
+| S7 | Push wooden box to human's left; `tray_moved_left` | S3, S4, S5, S6 |
 
 S1–S3 are mutually unconstrained and S4–S6 can be reordered once their
 individual prerequisites are satisfied. Explicit S3 → S7 is retained even
@@ -121,8 +121,10 @@ Important limitations:
    pick-and-place; it stops explicitly on S4–S7 instead of pretending a
    seven-step successful robot episode.
 2. The existing `ChallengeMemory` uses Euclidean tray displacement for
-   `tray_moved`; this does **not** yet certify that the box moved to the
-   human's left. Final directional success requires a calibrated left axis.
+   `tray_moved`; this does **not** certify that the box moved to the
+   human's left. The canonical `tray_moved_left` goal therefore stays
+   unobserved until an external directional verifier with a calibrated
+   human-left reference frame supplies that predicate.
 3. These tests cover graph contracts, observed-evidence formatting and memory
    invalidation, not actual ASR accuracy, calibrated gaze-match accuracy or
    robot long-horizon policy success.
