@@ -5,6 +5,12 @@ on:
       - 'Ego2Robot_scene/pick_place.py'
       - 'Ego2Robot_scene/challenge_scene.py'
       - 'Ego2Robot_scene/execute_demo.py'
+      - 'Ego2Robot_scene/grounded_plan.py'
+      - 'Ego2Robot_scene/run_grounded.py'
+      - 'Ego2Robot_scene/aria_ingest.py'
+      - 'tests/fixtures/synthetic_aria_manifest.json'
+      - 'tests/fixtures/synthetic_aria_transcript.json'
+      - 'tests/fixtures/synthetic_aria_gaze.json'
       - 'tests/fixtures/synthetic_plan.json'
       - 'tests/fixtures/synthetic_two_step.json'
       - 'tests/fixtures/synthetic_red_white.json'
@@ -45,6 +51,19 @@ jobs:
             reachy2_mujoco_assets/scenes/ego2robot_challenge.xml \
             --plan tests/fixtures/synthetic_plan.json --max-steps 1
           # Fixture is NOT user data; this checks only API/physical control.
+
+      - name: Synthetic Aria-to-grounded-plan-to-physical-Reachy integration
+        run: |
+          unset MUJOCO_GL
+          python -u Ego2Robot_scene/run_grounded.py \
+            --manifest tests/fixtures/synthetic_aria_manifest.json \
+            --gaze-matches tests/fixtures/synthetic_aria_gaze.json \
+            --scene reachy2_mujoco_assets/scenes/ego2robot_challenge.xml \
+            --out outputs/ci_synthetic \
+            --run-sim
+          grep -q '"white_cube_in_bin": true' \
+            outputs/ci_synthetic/robot/ci_synthetic_first_step/summary.json
+          echo 'PASS: synthetic interface physically placed white cube; NOT real Aria validation.'
 
       - name: Probe all cube colours in the compact layout
         run: |
