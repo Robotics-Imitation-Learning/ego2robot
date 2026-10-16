@@ -57,6 +57,8 @@ def attach_correspondence(rows, path, *, require_gaze=False):
                 "robot_xy": event.get("robot_xy"),
                 "score": float(event["score"]),
                 "raw_cosine": event.get("raw_cosine"),
+                "query_descriptor_path": event.get("query_descriptor_path"),
+                "query_descriptor_key": event.get("query_descriptor_key"),
             }
         step["phase_correspondence"] = {
             "source": target(source), "destination": target(destination),
