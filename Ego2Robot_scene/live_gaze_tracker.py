@@ -162,8 +162,8 @@ class LiveGazeTracker:
                 "xy": None, "valid": False, "method": "uninitialized",
                 "cosine": None, "flow_fraction": None, "corners": None,
             }
-        if self.dino_reanchor and not self.queries:
-            raise RuntimeError("DINO re-anchoring requested without exported real Aria patch descriptors")
+        if self.dino_reanchor and set(self.queries) != {"source","destination"}:
+            raise RuntimeError("DINO re-anchoring requires BOTH real Aria source and destination query descriptors; rerun the gaze matcher")
 
     def _dino(self, rgb, now, initial=False):
         if not self.dino_reanchor:
@@ -175,12 +175,14 @@ class LiveGazeTracker:
         features,mapping = self.dino_model.features(rgb)
         for phase, query in self.queries.items():
             state = self.states[phase]
-            prior = state["xy"] if state["valid"] and not initial else None
+            prior = state["xy"] if state["valid"] else None
             point, sim = self.dino_model.match(
-                query,features,mapping,rgb.shape,prior=prior)
+                query,features,mapping,rgb.shape,prior=prior,
+                radius_px=155 if initial else 85)
             if point is not None:
+                # A semantic re-anchor invalidates previous optical-flow corners.
                 state.update(xy=point,valid=True,method="dino_reanchor",
-                             cosine=sim,flow_fraction=None)
+                             cosine=sim,flow_fraction=None,corners=None)
             elif not state["valid"]:
                 state.update(method="dino_no_match",cosine=sim)
         self.last_dino_at = float(now)
