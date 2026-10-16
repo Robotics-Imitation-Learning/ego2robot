@@ -132,6 +132,9 @@ def main():
     summary = {
         "demo_id": plan["demo_id"],
         "recording_file": plan["recording_file"],
+        "grounding_mode": plan.get("pipeline_label", "unspecified"),
+        "learned_grounding_predictions": plan.get("learned_grounding", {}),
+        "visual_state_probe": plan.get("visual_state_probe", None),
         "executed_steps": history,
         "final_oracle_state": memory.state(data),
         "note": "Oracle verification, not learned visual state estimation.",
