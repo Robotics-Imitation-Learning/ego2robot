@@ -1,0 +1,72 @@
+name: Robot camera optical-flow physics integration
+on:
+  push:
+    paths:
+      - 'Ego2Robot_scene/live_gaze_tracker.py'
+      - 'Ego2Robot_scene/pick_place.py'
+      - 'Ego2Robot_scene/execute_demo.py'
+      - 'Ego2Robot_scene/phase_attention.py'
+      - 'Ego2Robot_scene/grounded_plan.py'
+      - '.github/workflows/live_tracking_physics.yml'
+  workflow_dispatch:
+jobs:
+  robot_camera_flow:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      MUJOCO_GL: osmesa
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: CPU offscreen graphics
+        run: sudo apt-get update -qq && sudo apt-get install -y libosmesa6 libosmesa6-dev libgl1-mesa-dev
+      - name: Install simulation and optical flow requirements
+        run: python -m pip install -r requirements.txt opencv-python-headless
+      - name: Install official Reachy 2 assets
+        run: git clone --depth 1 https://github.com/pollen-robotics/reachy2_mujoco_assets.git
+      - name: Build fixed-base scene and make synthetic reference pixels
+        run: |
+          python Ego2Robot_scene/challenge_scene.py --reachy-assets reachy2_mujoco_assets
+          python Ego2Robot_scene/render_gaze_reference.py \
+            reachy2_mujoco_assets/scenes/ego2robot_challenge.xml \
+            --pitch-options 0.35 --out outputs/synthetic_reference
+          python - <<'PY'
+          import json
+          import numpy as np
+          from pathlib import Path
+          masks=np.load('outputs/synthetic_reference/robot_oracle_masks.npz')
+          events=json.loads(Path('tests/fixtures/synthetic_aria_gaze.json').read_text())
+          for item in events['events']:
+              yy,xx=np.where(masks[item['target']])
+              assert len(xx)>10,item['target']
+              item['robot_xy']=[float(np.median(xx)),float(np.median(yy))]
+          Path('outputs/synthetic_gaze_robot_xy.json').write_text(json.dumps(events,indent=2))
+          print('SYNTHETIC oracle-seeded robot pixels (not applicant gaze)',events['events'])
+          PY
+      - name: Full physical white-bin placement with live robot optical flow
+        run: |
+          python -u Ego2Robot_scene/run_grounded.py \
+            --manifest tests/fixtures/synthetic_aria_manifest.json \
+            --gaze-matches outputs/synthetic_gaze_robot_xy.json \
+            --scene reachy2_mujoco_assets/scenes/ego2robot_challenge.xml \
+            --out outputs/ci_robot_flow --run-sim --record --track-gaze
+      - name: Assert phase attention is measured from live robot frames
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          out=Path('outputs/ci_robot_flow/robot/ci_synthetic_first_step')
+          result=json.loads((out/'summary.json').read_text())
+          assert result['final_oracle_state']['white_cube_in_bin'] is True
+          flow=json.loads((out/'01_white/live_gaze_tracking.json').read_text())
+          attention=json.loads((out/'01_white/phase_attention.json').read_text())
+          assert len(flow['frames'])>=8
+          assert attention['live_optical_flow_enabled'] is True
+          assert attention['sim_time_s_at_switch'] is not None
+          assert any(f['targets']['source']['method']=='pyramidal_lk' for f in flow['frames'])
+          assert any(f['targets']['destination']['method']=='pyramidal_lk' for f in flow['frames'])
+          print('PASS: physical placement and independently timed robot-camera flow samples',len(flow['frames']))
+          print('NOTE: synthetic oracle-seeded pixels, NOT real Aria-to-Reachy validation')
+          PY
