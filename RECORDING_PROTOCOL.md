@@ -34,7 +34,7 @@ via established Aria RGB/gaze correspondence, narration/task grounding, and
 | 04 | Start with white cube already in white bin, then remaining six steps | Optional already-satisfied-goal test |
 
 One recording = one continuous Aria take, no stopping between steps. Full takes
-should be natural (~45–90 seconds), not forced to exactly 60 seconds. Reset the
+should be natural (~45-90 seconds), not forced to exactly 60 seconds. Reset the
 table between recordings and photograph the initial setup. For 04, intentionally
 prefill white cube before the recording and state that initial condition.
 
@@ -63,7 +63,7 @@ tray." Final step: "Push the wooden tray to the right."
 Start recording with a short phrase identifying the demonstration:
 "Ego2Robot demonstration one." Wait ~1 second, then start the first instruction.
 Avoid a long spoken explanation while executing. After reaching each intended
-end state, briefly pause (~0.5–1 second) before beginning the next instruction.
+end state, briefly pause (~0.5-1 second) before beginning the next instruction.
 Narration marks intended action semantics, NOT ground-truth proof of success.
 A reviewer should verify the action boundaries and actual state outcome.
 
