@@ -205,9 +205,14 @@ def run(args):
     bin_body = data.body("e2r_" + destination)
 
     if args.jitter:
-        joint = data.joint("e2r_" + source + "_joint")
-        data.qpos[joint.qposadr[0]] += args.jitter[0]
-        data.qpos[joint.qposadr[0] + 1] += args.jitter[1]
+        jid = mujoco.mj_name2id(
+            model, mujoco.mjtObj.mjOBJ_JOINT, "e2r_" + source + "_joint"
+        )
+        if jid < 0:
+            raise RuntimeError("Missing cube freejoint for jitter test")
+        qadr = int(model.jnt_qposadr[jid])
+        data.qpos[qadr] += args.jitter[0]
+        data.qpos[qadr + 1] += args.jitter[1]
         mujoco.mj_forward(model, data)
 
     print(f"Right-arm reusable skill: {source} -> {destination}", flush=True)
