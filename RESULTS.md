@@ -1,4 +1,4 @@
-# Experimental results — 16 October 2026
+# Experimental results: 16 October 2026
 
 ## Research question
 
