@@ -174,7 +174,7 @@ def main():
                    help="Path to cloned pollen-robotics/reachy2_mujoco_assets")
     p.add_argument("--free-base", action="store_true",
                    help="Keep Reachy's root freejoint (diagnostic only)")
-    p.add_argument("--finger-pad-mm", type=float, default=4.0,
+    p.add_argument("--finger-pad-mm", type=float, default=3.0,
                    help="Right fingertip collision sleeve extension in mm; 0 = stock")
     args = p.parse_args()
     if not 0.0 <= args.finger_pad_mm <= 6.0:
