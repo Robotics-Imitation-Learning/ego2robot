@@ -39,8 +39,17 @@ def prepare(vrs,mp4,gaze_csv,transcript,out,demo_id,convert=False,asr=False):
     if gaze_csv:
         with gaze_csv.open(newline="") as f:
             reader=csv.DictReader(f)
-            if not reader.fieldnames or not ({"timestamp_s","tracking_timestamp_us"} & set(reader.fieldnames)):
-                raise ValueError("Gaze CSV needs timestamp_s or tracking_timestamp_us")
+            if not reader.fieldnames or not any(
+                "gaze" in name.lower() or name.lower() in
+                {"x","y","gaze_x","gaze_y","frame","frame_idx","frame_index",
+                 "timestamp_s","timestamp_ns","tracking_timestamp_us"}
+                for name in reader.fieldnames
+            ):
+                raise ValueError(
+                    "CSV does not resemble a projected gaze file. "
+                    "Inspect header with transfer_aria_gaze.py inspect and "
+                    "supply correct file, not an annotation CSV."
+                )
             samples=sum(1 for _ in reader)
             if not samples: raise ValueError("Gaze CSV is empty")
     manifest={
