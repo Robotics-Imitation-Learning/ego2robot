@@ -19,6 +19,7 @@ class TestFullProcedure(unittest.TestCase):
     def test_graph_exact_prerequisites(self):
         self.assertTrue(validate_graph())
         self.assertEqual(len(STEPS), 7)
+        self.assertEqual(STEPS[6].goal, "tray_moved_left")
         expected = [(), (), (), ("S1",), ("S2",), ("S3",),
                     ("S3", "S4", "S5", "S6")]
         self.assertEqual([s.requires for s in STEPS], expected)
@@ -136,6 +137,7 @@ class TestFullProcedure(unittest.TestCase):
         self.assertNotIn("S3", m.completed())
         self.assertNotIn("S6", m.completed())
         self.assertNotIn("S7", m.completed())
+        self.assertFalse(m.snapshot()["derived_facts"]["wooden_box_full"])
         m.update({"black_cube_in_bin": True})
         self.assertTrue(m.snapshot()["all_complete"])
 
