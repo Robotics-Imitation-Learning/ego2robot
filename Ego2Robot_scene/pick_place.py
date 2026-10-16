@@ -161,6 +161,20 @@ class RightArm:
         candidates = [self.solve(xyz, orientation, seed=seed) for seed in seeds]
         return min(candidates, key=lambda item: item[1] + 0.10 * item[2])
 
+    def object_contact_count(self, object_name):
+        """Number of current MuJoCo contact pairs involving the object."""
+        bid = mujoco.mj_name2id(
+            self.model, mujoco.mjtObj.mjOBJ_BODY, "e2r_" + object_name
+        )
+        count = 0
+        for i in range(self.data.ncon):
+            contact = self.data.contact[i]
+            a = int(self.model.geom_bodyid[contact.geom1])
+            b = int(self.model.geom_bodyid[contact.geom2])
+            if a == bid or b == bid:
+                count += 1
+        return count
+
     def step(self, seconds):
         count = max(1, int(round(seconds / self.model.opt.timestep)))
         for _ in range(count):
@@ -172,8 +186,12 @@ class RightArm:
         print(f"{label}: IK position error={p_err:.3f} m, "
               f"orientation error={r_err:.3f}, target={np.round(xyz, 3)}",
               flush=True)
-        if p_err > 0.035:
-            raise RuntimeError(f"{label} IK not reachable to within 3.5 cm")
+        tolerance = 0.012 if label == "grasp" else 0.030
+        if p_err > tolerance:
+            raise RuntimeError(
+                f"{label}: IK error {p_err:.3f} m exceeds "
+                f"{tolerance:.3f} m tolerance"
+            )
         start = self.q()
         n = max(1, int(round(duration / self.model.opt.timestep)))
         for k in range(n):
@@ -263,11 +281,15 @@ def run(args):
         arm.close_gripper()
         arm.step(1.1)
         snapshot("03_close")
+        print("Cube contact pairs immediately after closure:",
+              arm.object_contact_count(source), flush=True)
         print("Gripper joint:",
               float(data.qpos[model.jnt_qposadr[arm.grip_jid]]), flush=True)
         arm.go("lift", lift, rot)
         arm.step(0.6)
         snapshot("04_lift")
+        print("Cube contact pairs after lift:",
+              arm.object_contact_count(source), flush=True)
 
         cube_after_lift = np.array(source_body.xpos)
         lift_amount = float(cube_after_lift[2] - start_cube_z)
