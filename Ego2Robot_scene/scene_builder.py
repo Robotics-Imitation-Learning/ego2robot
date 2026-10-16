@@ -43,8 +43,12 @@ def new_geom(parent, *, name, shape, pos, size, color, **attrs):
 
 def add_kit(worldbody, preset):
     """Append fixed tray/bins and dynamic bodies to an existing worldbody."""
+    # The lab preset matches the later photograph: the wooden tray sits
+    # behind the three separate bins, instead of holding the bins.
+    lab = preset == 'lab'
+    tray_x = C['lab_crate_center_x'] if lab else CRATE_X
     wooden = ET.SubElement(worldbody, 'body', name='e2r_wooden_tray',
-                           pos=vec(CRATE_X, CRATE_Y, TABLE_TOP))
+                           pos=vec(tray_x, CRATE_Y, TABLE_TOP))
     new_geom(wooden, name='crate_floor', shape='box',
              pos=(0, 0, CRATE_F / 2), size=(CX / 2, CY / 2, CRATE_F / 2),
              color='wood', friction='1.0 0.02 0.001')
@@ -60,10 +64,17 @@ def add_kit(worldbody, preset):
 
     # All bin geometry is fixed to the world/tray. Each open container is
     # constructed from five box primitives, with no lid and a real interior.
-    centers = {'black': SPACING, 'white': 0, 'red': -SPACING}
+    centers = (
+        {'black': C['lab_bin_pitch_y'], 'red': 0, 'white': -C['lab_bin_pitch_y']}
+        if lab else {'black': SPACING, 'white': 0, 'red': -SPACING}
+    )
     for color, y in centers.items():
-        b = ET.SubElement(wooden, 'body', name=f'e2r_{color}_bin',
-                          pos=vec(0, y, CRATE_F))
+        if lab:
+            b = ET.SubElement(worldbody, 'body', name=f'e2r_{color}_bin',
+                              pos=vec(C['lab_bin_center_x'], y, TABLE_TOP))
+        else:
+            b = ET.SubElement(wooden, 'body', name=f'e2r_{color}_bin',
+                              pos=vec(0, y, CRATE_F))
         new_geom(b, name=f'{color}_bin_floor', shape='box',
                  pos=(0, 0, BIN_F / 2), size=(BX / 2, BY / 2, BIN_F / 2),
                  color=color, friction='1.0 0.02 0.001')
@@ -93,13 +104,24 @@ def add_kit(worldbody, preset):
         'red_cube': (C['sorting_pickup_x'], -C['sorting_pickup_y']),
         'black_cube': (C['sorting_pickup_x'], C['sorting_pickup_y']),
     }
+    # Six real objects are loose on the grey tabletop in the lab image.
+    # Keep gaps between objects, so both reaching and scene correspondence
+    # can be debugged without incidental collisions.
+    lab_free = {
+        'red_cube': (0.48, -0.22),
+        'black_cube': (0.48, 0.19),
+        'white_cube': (0.48, -0.43),
+        'red_cuboid': (0.48, 0.45),
+        'white_cuboid': (0.48, 0.32),
+        'white_cylinder': (0.48, -0.06),
+    }
     for name, cfg in CONFIG['objects'].items():
         size = cfg['size_m']
         is_cylinder = cfg['shape'] == 'cylinder'
         height = size[1] if is_cylinder else size[2]
-        in_free = preset == 'sorting' and name in free
+        in_free = (preset == 'sorting' and name in free) or lab
         if in_free:
-            x, y = free[name]
+            x, y = lab_free[name] if lab else free[name]
             bottom = TABLE_TOP
         else:
             color, local_x = photo[name]
@@ -118,8 +140,9 @@ def add_kit(worldbody, preset):
                  friction='1.2 0.03 0.002', condim='4', priority='1')
 
     ET.SubElement(worldbody, 'camera', name='e2r_overhead',
-                  pos=vec(CRATE_X, CRATE_Y, 1.40),
-                  xyaxes='1 0 0 0 1 0', fovy='38')
+                  pos=vec(0.70 if lab else CRATE_X, CRATE_Y,
+                          1.55 if lab else 1.40),
+                  xyaxes='1 0 0 0 1 0', fovy='65' if lab else '38')
 
 
 def make_standalone(preset):
@@ -162,6 +185,19 @@ def make_reachy(preset, assets_root):
     else:
         tracked.set('data', ', '.join(['torso', *ids]))
     root.set('model', f'reachy2_ego2robot_{preset}')
+    if preset == 'lab':
+        # A thin render-only overlay makes the *visible tabletop* dark grey.
+        # The upstream table, collision geoms, height and actuators are unchanged.
+        table_body = next((b for b in world.findall('body')
+                           if b.get('name') == 'table'), None)
+        if table_body is None:
+            raise ValueError('Expected Reachy table body named table')
+        ET.SubElement(table_body, 'geom', {
+            'name': 'e2r_gray_tabletop', 'type': 'box',
+            'pos': '0 0 0.6254', 'size': '0.6 0.375 0.0003',
+            'rgba': '0.33 0.34 0.36 1',
+            'contype': '0', 'conaffinity': '0', 'group': '1'
+        })
     add_kit(world, preset)
     return root
 
@@ -176,7 +212,7 @@ def save(root, dest):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--preset', choices=['photo', 'sorting', 'both'], default='both')
+    parser.add_argument('--preset', choices=['photo', 'sorting', 'lab', 'both'], default='both')
     parser.add_argument('--reachy-assets', type=Path, default=None,
                         help='Path to cloned pollen-robotics/reachy2_mujoco_assets; optional')
     parser.add_argument('--out', type=Path, default=P/'generated')
