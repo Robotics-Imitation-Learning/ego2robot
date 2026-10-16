@@ -1,0 +1,15 @@
+{
+  "events": [
+    {
+      "timestamp_s": 0.75,
+      "target": "white_cube",
+      "score": 0.9
+    },
+    {
+      "timestamp_s": 2.25,
+      "target": "white_bin",
+      "score": 0.9
+    }
+  ],
+  "note": "SYNTHETIC artificial correspondence scores, not measured"
+}
