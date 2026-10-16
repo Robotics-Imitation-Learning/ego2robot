@@ -59,6 +59,14 @@ flowchart LR
 
 In this **single atomic skill**, human gaze attends to the **source cube**, then the **destination container**. DINOv2 transfers the two attended visual regions into the robot's head-camera view. **Robot execution is never synchronized to the human timestamps:** live robot optical flow tracks both targets, and a physically verified stable grasp triggers the source → destination attention switch.
 
+### Reachy 2 simulator: physical cube placement and phase-based visual tracking
+
+<a href="docs/media/robot_simulation_synthetic_seeds.mp4"><img alt="Watch Reachy 2 physically grasp the white cube and place it in the white bin with source-to-destination camera tracking" src="docs/media/robot_simulation_synthetic_seeds.gif" width="560"/></a>
+
+**[▶ Watch the small Reachy 2 demonstration (MP4)](docs/media/robot_simulation_synthetic_seeds.mp4)** · [Public CI generation and verification](https://github.com/Robotics-Imitation-Learning/ego2robot/actions/workflows/readme_robot_video.yml)
+
+**Evidence boundary:** this video is a *real MuJoCo physics execution* with a stable grasp and verified placement, but the **initial visual seed pixels were generated from simulator oracle masks** for CI reproducibility. It demonstrates the implemented robot control, optical-flow tracking and phase switch; it **does not** constitute validation of real Aria cross-view correspondence. The separate user-recorded Step 1 run did verify the physical cube-in-bin result with measured Aria gaze correspondences (see [live pipeline instructions](LIVE_PHASE_TRACKING.md)).
+
 ## 2. End-to-end architecture: how the modalities are used
 
 ```mermaid
