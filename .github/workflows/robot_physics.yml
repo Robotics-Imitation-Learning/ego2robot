@@ -25,9 +25,11 @@ jobs:
       - name: Validate physics scene
         run: python Ego2Robot_scene/smoke_test.py reachy2_mujoco_assets/scenes/ego2robot_challenge.xml --settle
       - name: Execute automatic side-pinch clearance sweep
-        env:
-          MUJOCO_GL: egl
         run: |
+          set -o pipefail
+          # No offscreen render is requested in CI: use MuJoCo CPU physics
+          # directly, without EGL (which requires a configured driver).
+          unset MUJOCO_GL
           python -u Ego2Robot_scene/pick_place.py \
             reachy2_mujoco_assets/scenes/ego2robot_challenge.xml \
             --mode execute --grasp-style side --auto-clearance 2>&1 | tee /tmp/grasp.log
