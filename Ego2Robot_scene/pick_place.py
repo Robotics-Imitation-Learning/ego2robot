@@ -235,7 +235,9 @@ class RightArm:
         center. The offset is measured AFTER the gripper opens/settles.
         """
         points = []
-        for name in ("r_prox_col2", "r_dist_col2"):
+        # These are OPPOSING fingers. The non-mimic proximal/distal pair
+        # belongs to the same finger and must not be averaged together.
+        for name in ("r_dist_col2", "r_dist_col2_mimic"):
             bid = mujoco.mj_name2id(
                 self.model, mujoco.mjtObj.mjOBJ_BODY, name
             )
