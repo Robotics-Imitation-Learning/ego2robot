@@ -106,3 +106,41 @@ Use Reachy's actual head-mounted `left_camera`/`right_camera`; the camera
 follows head articulation. `--fovy 95` changes a pinhole projection, not
 Aria's fisheye distortion. Cross-domain DINOv2 correspondence must be
 evaluated with the existing calibrated workflow.
+
+## First manipulation policy prototype
+
+`Ego2Robot_scene/pick_place.py` is a **new, unverified** direct-MuJoCo
+right-arm IK and physical manipulation scaffold. It uses live simulated
+object positions only to isolate manipulation before integrating the real
+egocentric demonstration. It does **not** count task success based on a
+gripper command; it checks physical lift and final cube-in-bin state.
+
+```bash
+# First: geometry and IK feasibility, no arm movement
+python Ego2Robot_scene/pick_place.py \
+  reachy2_mujoco_assets/scenes/ego2robot_challenge.xml --mode ik
+
+# Only if pregrasp/grasp/lift IK residuals are acceptable:
+python Ego2Robot_scene/pick_place.py \
+  reachy2_mujoco_assets/scenes/ego2robot_challenge.xml \
+  --mode execute --record
+
+# Optional perturbation after the first real grasp works:
+python Ego2Robot_scene/pick_place.py \
+  reachy2_mujoco_assets/scenes/ego2robot_challenge.xml \
+  --mode execute --jitter 0.02 0.0 --record
+```
+
+Outputs are saved under `outputs/white_cube/` (ignored by Git).
+If the IK residual is >3.5 cm, the physical rollout aborts before commanding
+an unreachable target. If the cube does not actually lift, the rollout stops
+rather than claiming success. The current approach geometry is inspired by
+Reachy's upstream grasp example but needs to be validated/tuned in the exact
+custom scene.
+
+**Important challenge-compliance gap:** This initial policy still uses the
+simulator oracle to choose cube/bin positions. Do not submit it alone and
+claim that human data drives the robot. The next integration must consume
+a *real extracted recording-derived* object/destination sequence and, if
+available, hand-derived relative motion waypoints; DINOv2 correspondence
+should ground the measured Aria gaze to Reachy head-camera imagery.
