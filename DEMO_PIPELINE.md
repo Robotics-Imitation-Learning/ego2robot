@@ -1,4 +1,4 @@
-# Ego2Robot — deadline demo: ONE physically verified grounded step
+# Ego2Robot: deadline demo: ONE physically verified grounded step
 
 **Scope frozen 2026-10-16:** Record the full human seven-step sequence,
 but execute only WHITE CUBE -> WHITE BIN on Reachy 2. The rest of the task graph
