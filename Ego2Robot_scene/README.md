@@ -21,6 +21,19 @@ All objects have **free joints and collision geometry**. The crate and bins are 
 
 Start with **sorting**, and simplify further (e.g. temporarily remove non-target distractors) if needed. Object order and bin targets can be changed from human demonstration signals without regenerating assets.
 
+### Lab-matched preset (recommended for Aria recording)
+
+`--preset lab` reproduces the **newer physical photograph**: a dark-grey tabletop, an empty wooden tray at the back, three bins *outside* the tray, and all six shapes loose on the table. The black/red/white bin order is chosen to approximate the photo. This preset is separate from the older `photo` and `sorting` presets, so it does not change their known-working geometry.
+
+Positions are *approximate and adjusted to fit Reachy 2's tabletop workspace*, not pixel-perfect reconstruction. The bins initially start empty to make real robotic placement feasible. The Reachy version overlays a non-colliding grey top surface on the stock textured tabletop; table contact geometry remains unchanged.
+
+```bash
+python scene_builder.py --preset lab --reachy-assets ../reachy2_mujoco_assets
+python smoke_test.py ../reachy2_mujoco_assets/scenes/ego2robot_lab.xml --render --settle
+```
+
+The physical tabletop being ~15 cm below the demonstrator's navel is **not** used as robot world-frame height; the baseline robot table remains 0.625 m high. Map human motion relative to the task surface and objects instead.
+
 ## Generate scenes (no extra packages required)
 
 ```bash
