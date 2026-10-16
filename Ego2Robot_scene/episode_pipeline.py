@@ -152,6 +152,17 @@ def load_alignments(path, demo_id, events):
     return output
 
 
+def instruction_for(step):
+    """Natural-language, demonstrator-supplied action semantics, not VLM inference."""
+    if step.id == "S7":
+        return "Push the fully packed wooden box to the left."
+    if step.id in ("S4", "S5", "S6"):
+        color = step.object.removesuffix("_bin")
+        return f"Pick up the {color} container and place it in the wooden box."
+    color = step.object.removesuffix("_cube")
+    return f"Pick up the {color} cube and place it in the {color} container."
+
+
 def build_episode_package(plan, events=None, alignments=None, *, event_file=None):
     """One procedure recording -> independently addressable step datasets."""
     if not isinstance(plan, dict) or not plan.get("demo_id") or not plan.get("recording_file"):
@@ -187,7 +198,7 @@ def build_episode_package(plan, events=None, alignments=None, *, event_file=None
     episodes = []
     group = {s.id: {
         "step_id": s.id, "skill": f"{s.verb}({s.object}, {s.destination})",
-        "instruction": f"{s.verb.replace('_', ' ')} {s.object} to {s.destination}",
+        "instruction": instruction_for(s),
         "goal_predicate": s.goal, "requires": list(s.requires),
         "episodes": [], "robot_action_supervision": "not_provided",
         "vla_training_status": "not_trained",
@@ -198,7 +209,7 @@ def build_episode_package(plan, events=None, alignments=None, *, event_file=None
         evidence = spoken.get(sid, [])
         row = dict(record)
         row.update({
-            "source_video": plan["recording_file"],
+            "source_video": plan.get("rgb_video_file") or plan["recording_file"],
             "narration_evidence": [{
                 "text": e.get("narration"), "start_s": e.get("start_s"),
                 "end_s": e.get("end_s"), "source_segments": e.get("source_segments"),
@@ -215,7 +226,8 @@ def build_episode_package(plan, events=None, alignments=None, *, event_file=None
     return {
         "schema_version": SCHEMA,
         "demo_id": demo_id,
-        "source_video": plan["recording_file"],
+        "source_video": plan.get("rgb_video_file") or plan["recording_file"],
+        "source_recording": plan["recording_file"],
         "source_transcript": plan.get("transcript_file"),
         "source_gaze_events": plan.get("gaze_matches"),
         "visual_event_source": str(event_file) if event_file is not None else None,
