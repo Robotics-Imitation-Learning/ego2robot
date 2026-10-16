@@ -1,0 +1,27 @@
+name: Trainable hierarchical VLA contract (CPU)
+on:
+  push:
+    paths:
+      - 'Ego2Robot_scene/trainable_vla.py'
+      - 'Ego2Robot_scene/make_vla_episode_pack.py'
+      - 'Ego2Robot_scene/run_grounded.py'
+      - 'tests/test_trainable_vla.py'
+      - '.github/workflows/trainable_vla.yml'
+  workflow_dispatch:
+jobs:
+  trainable_model:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install CPU PyTorch, NumPy
+        run: |
+          python -m pip install numpy
+          python -m pip install torch --index-url https://download.pytorch.org/whl/cpu
+      - name: Syntax checks
+        run: python -m py_compile Ego2Robot_scene/trainable_vla.py Ego2Robot_scene/make_vla_episode_pack.py Ego2Robot_scene/run_grounded.py
+      - name: Actually train cross-modal model on explicitly synthetic contract data
+        run: python -m unittest discover -s tests -p test_trainable_vla.py -v
