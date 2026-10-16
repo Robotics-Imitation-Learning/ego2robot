@@ -206,6 +206,39 @@ same CPU-only test in GitHub Actions, when explicitly triggered with
 workflow_dispatch by someone with repository access. As of this note no
 successful remote execution has been verified.
 
+## Verified physical execution results — 16 October 2026
+
+**Core grasp/placement blocker RESOLVED for white cube.** GitHub Actions CPU
+MuJoCo runs have verified actual physical pickup, stable retention, transfer,
+release, and settling in the white bin. Tested parameters:
+- Gripper model: stock Reachy 2 with documented **3 mm simulated sleeve
+  extension on each opposing fingertip** (generated isolated copy of the
+  upstream MJCF; no motion/attachment cheat).
+- Pinch pad centre: 10 mm above the 30 mm cube centre.
+- Static hold: after ~13 cm lift, maintain bilateral finger contact for a
+  further second.
+- Dynamic transport: ~6.9 mm relative cube slip in the validated white
+  trial; final cube-in-bin simulator oracle predicate True.
+- CI link:
+  https://github.com/Robotics-Imitation-Learning/ego2robot/actions/runs/38951413002
+
+A compact scene with cube/bin lateral coordinates (white -.32 m, red -.24 m,
+black -.16 m) was derived from an explicit 7-DoF IK workspace scan. In
+**independent initial-state** trials, white and red cubes each achieved
+physical placement with a gripper opening command of 1.0 rad. The black
+cube at -.16 m has **not** completed a stable grasp, despite IK reachability.
+
+**Important limitation:** Two consecutive placements on the **same persistent
+simulated scene** remain unsuccessful because the previous manipulation can
+disturb the next source's location, changing collision geometry. Do not
+present independent successes as proof of long-horizon procedural execution.
+
+The visual grounding/WACV/DINOv2 Aria data path is not yet integrated; all
+current motor trials use privileged MuJoCo poses and separately authored
+synthetic CI plans, which are explicitly labeled and NOT real applicant data.
+Prior paragraphs in this living engineering log may refer to older failed
+grasp variants; use the above timestamped result as the current status.
+
 ## First manipulation policy prototype
 
 `Ego2Robot_scene/pick_place.py` is a **new, unverified** direct-MuJoCo
