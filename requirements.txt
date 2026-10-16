@@ -1,0 +1,5 @@
+# Minimal MuJoCo scene compilation and headless rendering.
+# Robot SDK/controller and perception dependencies are intentionally optional.
+mujoco==3.2.6
+numpy>=1.26,<3
+Pillow>=10,<13
