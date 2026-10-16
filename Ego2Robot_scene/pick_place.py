@@ -322,12 +322,34 @@ class RightArm:
             )
         start = self.q()
         n = max(1, int(round(duration / self.model.opt.timestep)))
+        first_external_contact = None
+        peak_tracking_error = 0.0
         for k in range(n):
             alpha = (k + 1) / n
             alpha = alpha * alpha * (3.0 - 2.0 * alpha)
-            self.data.ctrl[self.aids] = (1 - alpha) * start + alpha * target_q
+            desired_q = (1 - alpha) * start + alpha * target_q
+            self.data.ctrl[self.aids] = desired_q
             mujoco.mj_step(self.model, self.data)
+            if label == "grasp" and k % 15 == 0:
+                e = float(np.max(np.abs(self.q() - desired_q)))
+                peak_tracking_error = max(peak_tracking_error, e)
+                external = {
+                    name: num for name, num in self.arm_contact_summary().items()
+                    if "simpleWoodTable" in name or "e2r_" in name
+                }
+                if external and first_external_contact is None:
+                    tip_now, _ = self.tip_pose()
+                    first_external_contact = {
+                        "time_s": round(float(self.data.time), 3),
+                        "tip_xyz": np.round(tip_now, 4).tolist(),
+                        "contacts": external,
+                    }
         self.step(0.35)
+        if label == "grasp":
+            print("Peak sampled grasp joint tracking error:",
+                  round(peak_tracking_error, 4), "rad", flush=True)
+            print("First gripper/robot vs table/object contact:",
+                  first_external_contact, flush=True)
         actual, _ = self.tip_pose()
         err = float(np.linalg.norm(actual - xyz))
         qerr = np.abs(self.q() - target_q)
