@@ -4,6 +4,19 @@
 
 A lightweight, reproducible Humanoid internship research challenge prototype. Research question: **can a humanoid execute a multi-step task by transferring human-derived object/goal correspondence and procedure, while retaining a small embodiment-specific motor controller and explicit task-state memory?**
 
+## Full seven-step procedural reasoning (new)
+
+The full personally recorded egocentric procedure can now be transcribed,
+aligned to a **demonstrator-specified DAG**, and passed to persistent
+execution memory with live postcondition reconciliation.
+See [FULL_PROCEDURE.md](FULL_PROCEDURE.md) for the actual recorded MP4 path,
+one-command CPU Whisper invocation, seven-node graph and test commands.
+
+This is a full **semantic procedure and memory** implementation, not a claim
+of successful seven-step robotic execution. The physical Reachy controller
+still supports only cube-to-bin operations. Human video times are never
+replayed as robot action times.
+
 ## Real Aria gaze to Reachy head-camera correspondence
 
 The key experiment now has a runnable DINOv2 feature matcher, synchronized
