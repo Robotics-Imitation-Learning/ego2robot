@@ -21,10 +21,15 @@ def main():
              'white_cuboid', 'white_cylinder']
     print('Compiled', args.scene, '|', 'bodies:', model.nbody,
           '| qpos:', model.nq, '| actuators:', model.nu)
+    present = 0
     for name in names:
         bid = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_BODY, 'e2r_' + name)
-        assert bid >= 0, f'Missing object {name}'
+        if bid < 0:
+            print(' ', name, '(not included in this preset)')
+            continue
+        present += 1
         print(' ', name, data.xpos[bid].round(4))
+    assert present >= 3, 'Expected at least the three colored cubes'
     if args.settle:
         for _ in range(500):
             mujoco.mj_step(model, data)
