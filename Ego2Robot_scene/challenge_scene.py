@@ -64,12 +64,23 @@ def _make_dynamic(body: ET.Element, *, total_mass: float):
         geom.set("conaffinity", "1")
 
 
-def make_challenge(assets_root: Path) -> ET.Element:
+def make_challenge(assets_root: Path, fixed_base: bool = True) -> ET.Element:
     root = make_reachy("lab", assets_root)
     root.set("model", "ego2robot_humanoid_challenge")
     world = root.find("worldbody")
     if world is None:
         raise ValueError("No worldbody in Reachy 2 scene")
+
+    # Stationary tabletop manipulation: the unpowered Reachy mobile base
+    # should not roll freely as the arm accelerates. Removing its root
+    # freejoint anchors the robot, but keeps ALL arm/gripper joints dynamic.
+    # --free-base is available as a diagnostic/control comparison.
+    if fixed_base:
+        reachy = _body(world, "reachy")
+        root_joint = reachy.find("freejoint[@name='mobile_base']")
+        if root_joint is None:
+            raise ValueError("Expected Reachy root mobile_base freejoint")
+        reachy.remove(root_joint)
 
     # All non-target distractor shapes are eliminated from BOTH model and
     # physics, rather than hidden only by changing their colors or visibility.
@@ -115,14 +126,17 @@ def main():
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--reachy-assets", required=True, type=Path,
                    help="Path to cloned pollen-robotics/reachy2_mujoco_assets")
+    p.add_argument("--free-base", action="store_true",
+                   help="Keep Reachy's root freejoint (diagnostic only)")
     args = p.parse_args()
     assets = args.reachy_assets.resolve()
     if not (assets / "scenes" / "table_scene.xml").is_file():
         raise FileNotFoundError("Missing official Reachy assets table_scene.xml")
     out = assets / "scenes" / "ego2robot_challenge.xml"
-    save(make_challenge(assets), out)
+    save(make_challenge(assets, fixed_base=not args.free_base), out)
     print(f"Scene contains 3 cubes, 3 movable bins, 1 movable wooden tray: {out}")
-    print("IMPORTANT: Physical grasping, IK reachability and transfers are NOT yet tested.")
+    print("Mobile base:", "FREE" if args.free_base else "FIXED")
+    print("IMPORTANT: Fixing the base does not guarantee contact-stable grasping.")
 
 
 if __name__ == "__main__":
