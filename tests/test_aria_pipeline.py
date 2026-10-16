@@ -45,7 +45,7 @@ class TestAriaPipeline(unittest.TestCase):
     def test_projected_csv_frame_alignment(self):
         with tempfile.TemporaryDirectory() as d:
             file=Path(d)/"gaze.csv"
-            file.write_text("frame_idx,gaze_x_px,gaze_y_px\\n0,240,240\\n10,250,246\\n")
+            file.write_text("frame_idx,gaze_x_px,gaze_y_px\n0,240,240\n10,250,246\n")
             a=read_rows(file,"gaze_x_px","gaze_y_px",framecol="frame_idx",fps=10)
             self.assertEqual(a[:,0].tolist(),[0.0,1.0])
             sq,m=letterbox(Image.new("RGB",(480,480)),518)
