@@ -269,6 +269,26 @@ class RightArm:
         )
         return err
 
+    def arm_contact_summary(self):
+        """Inspect contacts involving the moving right arm; count table/bin collisions."""
+        counts = {}
+        for i in range(self.data.ncon):
+            c = self.data.contact[i]
+            b1 = int(self.model.geom_bodyid[int(c.geom1)])
+            b2 = int(self.model.geom_bodyid[int(c.geom2)])
+            n1 = mujoco.mj_id2name(
+                self.model, mujoco.mjtObj.mjOBJ_BODY, b1
+            ) or str(b1)
+            n2 = mujoco.mj_id2name(
+                self.model, mujoco.mjtObj.mjOBJ_BODY, b2
+            ) or str(b2)
+            # Reachy right-side arm bodies have r_ prefixes.
+            if not (n1.startswith("r_") or n2.startswith("r_")):
+                continue
+            key = " <-> ".join(sorted([n1, n2]))
+            counts[key] = counts.get(key, 0) + 1
+        return counts
+
     def step(self, seconds):
         count = max(1, int(round(seconds / self.model.opt.timestep)))
         for _ in range(count):
@@ -297,6 +317,7 @@ class RightArm:
         actual, _ = self.tip_pose()
         err = float(np.linalg.norm(actual - xyz))
         qerr = np.abs(self.q() - target_q)
+        print("Active right-arm contacts:", self.arm_contact_summary(), flush=True)
         base_drift = float(np.linalg.norm(
             np.array(self.data.body("reachy").xpos) - self.base_initial
         ))
@@ -364,10 +385,14 @@ def run(args):
     print("Initial source:", np.round(source_body.xpos, 4),
           "destination:", np.round(bin_body.xpos, 4), flush=True)
 
-    # The existing official Reachy example uses a -90 degree Y rotation
-    # for a lateral approach to a tabletop object. Here the r_arm_tip
-    # target is positioned ~5 cm above cube center in that orientation.
-    rot = rot_y(-np.pi / 2)
+    # TOP-DOWN: gripper's palm local +Z points downward after its
+    # fixed arm_tip quaternion (180 degrees about Y). Hence when tip
+    # orientation = identity, fingers extend vertically DOWN toward cube.
+    # A vertical approach avoids sweeping fingertips through the table.
+    # --grasp-style side retains the original lateral approach for comparison.
+    topdown = args.grasp_style == "topdown"
+    rot = np.eye(3) if topdown else rot_y(-np.pi / 2)
+    print("Grasp style:", args.grasp_style, flush=True)
 
     # Pinch-center alignment must be computed in the actual MuJoCo scene,
     # after opening the gripper. Previously we assumed arm_tip was the
@@ -376,10 +401,14 @@ def run(args):
     def compute_targets():
         local_pad_offset, pad_world, gap, pads = arm.pinch_geometry()
         cube_center = np.asarray(source_body.xpos).copy()
-        desired_pinch = cube_center + np.array([0.0, 0.0, 0.003])
+        desired_pinch = cube_center + np.array([0.0, 0.0, 0.004])
         grasp_tip = desired_pinch - rot @ local_pad_offset
-        approach = grasp_tip + np.array([-0.11, 0.0, 0.0])
-        high = approach + np.array([0.0, 0.0, 0.19])
+        if topdown:
+            approach = grasp_tip + np.array([0.0, 0.0, 0.14])
+            high = approach + np.array([0.0, 0.0, 0.09])
+        else:
+            approach = grasp_tip + np.array([-0.11, 0.0, 0.0])
+            high = approach + np.array([0.0, 0.0, 0.19])
         lifted = grasp_tip + np.array([0.0, 0.0, 0.13])
         print(
             "Measured open-gripper tip-to-pinch local offset:",
@@ -435,7 +464,12 @@ def run(args):
         snapshot("02_high")
         arm.go("pregrasp", pregrasp, rot, duration=3.0)
         snapshot("03_pregrasp")
-        arm.go("grasp", pickup_tip, rot, duration=2.5)
+        try:
+            arm.go("grasp", pickup_tip, rot, duration=3.0)
+        except RuntimeError:
+            snapshot("04_grasp_FAILED")
+            print("Grasp entry failed; recorded collision geometry above.", flush=True)
+            raise
         snapshot("04_grasp")
         pinch_err = arm.pinch_debug(source, "at grasp")
         if pinch_err > 0.045:
@@ -520,6 +554,9 @@ def main():
     parser.add_argument("--bin", choices=["white_bin", "red_bin", "black_bin"],
                         default=None)
     parser.add_argument("--mode", choices=["ik", "execute"], default="ik")
+    parser.add_argument("--grasp-style", choices=["topdown", "side"],
+                        default="topdown",
+                        help="Top-down vertical pinch (default) or old lateral approach")
     parser.add_argument("--jitter", type=float, nargs=2, default=None,
                         metavar=("DX", "DY"),
                         help="Randomization test: initial object displacement (m)")
