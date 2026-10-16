@@ -11,6 +11,7 @@ reachy2_mujoco_assets/
 reachy2_mujoco/
 data/raw/
 data/private/
+data/processed/
 checkpoints/
 *.vrs
 *.pt
