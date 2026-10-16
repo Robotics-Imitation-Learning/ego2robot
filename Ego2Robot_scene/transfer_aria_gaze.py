@@ -27,10 +27,17 @@ def read_rows(csv_file,xcol,ycol,framecol=None,timecol=None,time_unit="s",origin
             raise ValueError(f"CSV header={fields}; requested={required}")
         rows=list(reader)
     if not rows: raise ValueError("Empty gaze CSV")
+    if framecol and (fps is None or fps<=0):
+        raise ValueError("MP4 FPS must be measured before frame-index alignment")
     first=float(rows[0][timecol]) if timecol else None
     unit={"s":1.0,"ms":1e-3,"us":1e-6,"ns":1e-9}[time_unit]
     samples=[]
     for r in rows:
+        # Honor the Aria projection validity flag: invalid or out-of-frame
+        # observations must never be transferred to a robot target.
+        v=str(r.get("valid","true")).strip().lower()
+        if v not in ("true","1","yes","t"):
+            continue
         try:
             x,y=float(r[xcol]),float(r[ycol])
             raw=float(r[timecol]) if timecol else float(r[framecol])
