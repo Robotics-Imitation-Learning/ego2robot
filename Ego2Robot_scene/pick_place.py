@@ -557,8 +557,31 @@ def run(args):
         # Re-observe the actual held cube-to-gripper displacement rather
         # than assuming the object is perfectly centered in the gripper.
         tip, _ = arm.tip_pose()
-        held_offset = np.asarray(source_body.xpos) - tip
+        held_offset = np.asarray(source_body.xpos).copy() - tip
         bin_xyz = np.asarray(bin_body.xpos).copy()
+        print("After lift: cube xyz:",
+              np.round(source_body.xpos, 4).tolist(),
+              "cube-to-tip offset:",
+              np.round(held_offset, 4).tolist(), flush=True)
+
+        def held_state(stage, tolerance=0.025):
+            """Check physical cube motion, never assume a rigid attachment."""
+            current_tip, _ = arm.tip_pose()
+            cube_xyz = np.asarray(source_body.xpos).copy()
+            new_offset = cube_xyz - current_tip
+            drift = float(np.linalg.norm(new_offset - held_offset))
+            in_bin_delta = cube_xyz[:2] - np.asarray(bin_body.xpos)[:2]
+            print(f"{stage}: cube xyz={cube_xyz.round(4).tolist()}, "
+                  f"bin XY delta={in_bin_delta.round(4).tolist()}, "
+                  f"relative-slip={drift:.4f} m, "
+                  f"cube contacts={arm.object_contact_count(source)}",
+                  flush=True)
+            if drift > tolerance:
+                raise RuntimeError(
+                    f"{stage}: cube slipped {drift:.3f} m relative to gripper; "
+                    "do not continue and report this as placement."
+                )
+            return cube_xyz
         # Move with clearance above the 3.8cm high bin walls.
         safe_cube = bin_xyz + np.array([0.0, 0.0, 0.17])
         safe_tip = safe_cube - held_offset
@@ -566,11 +589,41 @@ def run(args):
         release_tip = release_cube - held_offset
         arm.go("transport", safe_tip, rot, duration=2.4)
         snapshot("07_transport")
+        actual_cube = held_state("after_transport")
+
+        # Correct any small dynamic displacement WHILE ABOVE the bin walls.
+        # Compensates for slight gripper/physics drift without teleporting.
+        xy_error = np.asarray(bin_body.xpos)[:2] - actual_cube[:2]
+        if float(np.linalg.norm(xy_error)) > 0.005:
+            corrected_safe = safe_tip + np.array([xy_error[0], xy_error[1], 0.0])
+            print("Aligning held cube above bin by:",
+                  np.round(xy_error, 4).tolist(), flush=True)
+            arm.go("align_over_bin", corrected_safe, rot, duration=1.5)
+            snapshot("07b_align")
+            held_state("after_align")
+            # Re-observe the actual cube-to-hand transform rather than
+            # using the initial height/reference after the correction.
+            actual_tip, _ = arm.tip_pose()
+            current_offset = np.asarray(source_body.xpos).copy() - actual_tip
+            release_tip = release_cube - current_offset
+
         arm.go("lower_over_bin", release_tip, rot, duration=1.6)
         snapshot("08_lower")
+        held_state("before_release")
+        print("Before release: cube xyz:",
+              np.round(source_body.xpos, 4).tolist(),
+              "bin xyz:", np.round(bin_body.xpos, 4).tolist(), flush=True)
         arm.open_gripper()
-        arm.step(1.0)
+        arm.step(0.4)
+        print("0.4s after release: cube xyz:",
+              np.round(source_body.xpos, 4).tolist(),
+              "cube contacts:", arm.object_contacts(source), flush=True)
+        arm.step(0.6)
         snapshot("09_release")
+        print("1.0s after release: cube xyz:",
+              np.round(source_body.xpos, 4).tolist(),
+              "bin xyz:", np.round(bin_body.xpos, 4).tolist(),
+              flush=True)
         # Retract without hitting the container.
         retract = release_tip + np.array([-0.11, 0, 0.08])
         arm.go("retract", retract, rot, duration=1.5)
