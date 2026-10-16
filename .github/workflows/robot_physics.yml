@@ -74,6 +74,7 @@ jobs:
           if python -u Ego2Robot_scene/execute_demo.py \
               reachy2_mujoco_assets/scenes/ego2robot_compact.xml \
               --plan tests/fixtures/synthetic_two_step.json --max-steps 2 \
+              --approach-open-angle 1.0 \
               > /tmp/two_step.log 2>&1; then
             echo "Two sequential physical placements passed in one simulation."
           else
