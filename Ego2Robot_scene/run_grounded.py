@@ -12,6 +12,7 @@ from pathlib import Path
 import numpy as np
 from grounded_plan import build_plan
 from learn_grounding import scores
+from state_probe import predict as visual_state_predict
 
 def predict_learned(model_path,feature_path):
     model=np.load(model_path,allow_pickle=False)
@@ -34,6 +35,10 @@ def main():
     p.add_argument("--scene",type=Path,help="Verified Reachy MuJoCo MJCF")
     p.add_argument("--run-sim",action="store_true")
     p.add_argument("--record",action="store_true")
+    p.add_argument("--vjepa-state-model",type=Path,
+                   help="Previously trained preliminary incomplete/complete ridge probe")
+    p.add_argument("--vjepa-state-features",type=Path,
+                   help="Actual V-JEPA 2 clip representations for inspection")
     p.add_argument("--out",type=Path,default=Path("outputs/grounded"))
     for role in ("source","destination","verb"):
         p.add_argument("--"+role+"-model",type=Path)
@@ -58,6 +63,20 @@ def main():
             if prediction["class"]!=st[key]:
                 raise RuntimeError(f"ABSTAIN: learned {role}={prediction['class']} disagrees with narration/gaze {st[key]}")
     plan["learned_grounding"]=inference
+    if bool(a.vjepa_state_model)!=bool(a.vjepa_state_features):
+        p.error("Both --vjepa-state-model and --vjepa-state-features are required")
+    if a.vjepa_state_model:
+        visual_model=np.load(a.vjepa_state_model,allow_pickle=False)
+        visual_vectors=np.load(a.vjepa_state_features,allow_pickle=False)
+        checkpoint=str(visual_vectors["checkpoint"]) if "checkpoint" in visual_vectors else "unknown"
+        predicted,raw_scores=visual_state_predict(
+            visual_vectors["vision_features"],visual_model["W"])
+        plan["visual_state_probe"]={
+            "checkpoint":checkpoint,
+            "prediction":predicted.tolist(),
+            "ridge_scores":raw_scores.tolist(),
+            "interpretation":"Preliminary V-JEPA 2 first-step state classifications; NOT MuJoCo physical success verification",
+        }
     plan["first_step_policy"]="frozen visual representations + optional trained ridge classifiers -> parametric IK"
     a.out.mkdir(parents=True,exist_ok=True)
     path=a.out / (manifest["demo_id"]+"_grounded_plan.json")
