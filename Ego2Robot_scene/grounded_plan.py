@@ -96,7 +96,9 @@ def build_plan(manifest,transcript,gaze_matches=None,allow_narration_only=False,
                         "human_observation_time_s":float(observation["timestamp_s"]),
                         "robot_xy":observation.get("robot_xy"),
                         "score":float(observation["score"]),
-                        "raw_cosine":observation.get("raw_cosine")}
+                        "raw_cosine":observation.get("raw_cosine"),
+                        "query_descriptor_path":observation.get("query_descriptor_path"),
+                        "query_descriptor_key":observation.get("query_descriptor_key")}
             src=phase_target(observed_source,row["object"])
             dst=phase_target(observed_dest,row["destination"])
             row["phase_correspondence"]={
