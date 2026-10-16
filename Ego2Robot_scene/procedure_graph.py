@@ -34,8 +34,9 @@ STEPS = (
     Step("S4", "white_bin_in_tray", "pick_place", "white_bin", "wooden_tray", ("S1",)),
     Step("S5", "red_bin_in_tray", "pick_place", "red_bin", "wooden_tray", ("S2",)),
     Step("S6", "black_bin_in_tray", "pick_place", "black_bin", "wooden_tray", ("S3",)),
-    # S3 is explicitly required by the demonstrator, even though S6 implies it.
-    Step("S7", "tray_moved_left", "push", "wooden_tray", "left", ("S3", "S4", "S5", "S6")),
+    # S7 depends only on all three packed containers. S3 is already
+    # a transitive prerequisite via S3 -> S6 -> S7; do not add S3 -> S7.
+    Step("S7", "tray_moved_left", "push", "wooden_tray", "left", ("S4", "S5", "S6")),
 )
 BY_ID = {s.id: s for s in STEPS}
 BY_GOAL = {s.goal: s for s in STEPS}
