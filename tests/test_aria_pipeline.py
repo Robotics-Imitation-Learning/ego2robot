@@ -8,6 +8,8 @@ sys.path.insert(0,str(Path(__file__).resolve().parents[1]/"Ego2Robot_scene"))
 from aria_ingest import prepare
 from grounded_plan import parse_narration,build_plan,read_gaze_matches
 from state_probe import fit,predict
+from transfer_aria_gaze import read_rows,letterbox,gaze_to_square,interpret
+from PIL import Image
 import numpy as np
 
 class TestAriaPipeline(unittest.TestCase):
@@ -40,6 +42,31 @@ class TestAriaPipeline(unittest.TestCase):
             gaze.write_text(json.dumps({"events":[{"timestamp_s":0.4,"target":"red_cube","score":0.9}]}))
             with self.assertRaisesRegex(RuntimeError,"Gaze correspondence failed"):
                 build_plan(m,script,gaze)
+    def test_projected_csv_frame_alignment(self):
+        with tempfile.TemporaryDirectory() as d:
+            file=Path(d)/"gaze.csv"
+            file.write_text("frame_idx,gaze_x_px,gaze_y_px\\n0,240,240\\n10,250,246\\n")
+            a=read_rows(file,"gaze_x_px","gaze_y_px",framecol="frame_idx",fps=10)
+            self.assertEqual(a[:,0].tolist(),[0.0,1.0])
+            sq,m=letterbox(Image.new("RGB",(480,480)),518)
+            px,py,xy=gaze_to_square(240,240,(480,480),m,"pixel")
+            self.assertAlmostEqual(px,259,delta=1)
+            self.assertAlmostEqual(py,259,delta=1)
+    def test_letterboxed_mask_and_patch_label(self):
+        robot=Image.new("RGB",(640,480))
+        _,mapping=letterbox(robot,518)
+        masks={"white_cube":np.zeros((480,640),dtype=bool),
+               "white_bin":np.zeros((480,640),dtype=bool)}
+        masks["white_cube"][260:280,290:310]=True
+        masks["white_bin"][340:375,300:360]=True
+        score=np.zeros((37,37),dtype=float)
+        # White cube is vertically shifted by the 65px letterbox padding.
+        gx=int((300*mapping[2]+mapping[0])/14)
+        gy=int((270*mapping[3]+mapping[1])/14)
+        score[gy,gx]=0.85
+        name,reason,_,_=interpret(score,masks,robot.size,mapping,0.5,0.01)
+        self.assertIsNone(reason)
+        self.assertEqual(name,"white_cube")
     def test_probe_requires_both_states(self):
         x=np.asarray([[1,0],[0,1]],dtype=np.float32)
         with self.assertRaisesRegex(ValueError,"pre-step and post-step"):
