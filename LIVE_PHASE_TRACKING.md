@@ -1,7 +1,7 @@
 # Live phase-aware gaze correspondence: deadline demo
 
 This is an **implemented** visual tracking mode for the existing one-step
-physically verified Reachy 2 pick–place. It uses personally recorded Project
+physically verified Reachy 2 pick-place. It uses personally recorded Project
 Aria RGB and gaze to define source/destination queries, then tracks them in
 live Reachy head-camera frames.
 
@@ -11,7 +11,7 @@ live Reachy head-camera frames.
   source-before-destination evidence selection. They never control Reachy.
 - Reachy renders its **own** RGB throughout motor execution (about 5 Hz
   simulation time), tracks BOTH visual targets in every frame using pyramidal
-  Lucas–Kanade with a forward/backward check.
+  Lucas-Kanade with a forward/backward check.
 - The active target remains **source** through approach, gripper closure,
   lifting and stable-hold verification.
 - Once the actual Reachy controller verifies a physical lift, one-second
