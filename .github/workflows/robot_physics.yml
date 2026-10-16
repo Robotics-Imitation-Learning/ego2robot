@@ -56,12 +56,13 @@ jobs:
                 reachy2_mujoco_assets/scenes/ego2robot_compact.xml \
                 --object "${color}_cube" --mode execute \
                 --grasp-style side --pinch-height 0.010 \
+                --approach-open-angle 1.0 \
                 > "/tmp/compact_${color}.log" 2>&1; then
               code=0
             else
               code=$?
             fi
-            grep -E 'pregrasp: IK|grasp: executed|Cube lifted by|One-second static hold|after_transport:|cube_in_bin_oracle|Task unsuccessful|PASS: physical|RuntimeError' "/tmp/compact_${color}.log" || true
+            grep -E 'pregrasp: IK|grasp: executed|First gripper/robot|at grasp: pinch|Cube contacts after closure:|Cube lifted by|One-second static hold|after_transport:|cube_in_bin_oracle|Task unsuccessful|PASS: physical|RuntimeError' "/tmp/compact_${color}.log" || true
             echo "COMPACT ${color} exit status: $code (exploratory)"
           done
 
