@@ -538,17 +538,45 @@ def run(args, runtime=None):
         images = mujoco.Renderer(model, height=480, width=640)
 
     tracker = None
+    gaze_video = None
     if track_gaze:
         from live_gaze_tracker import LiveGazeTracker
         tracker = LiveGazeTracker(
             phase_attention.correspondences,
             dino_reanchor=bool(getattr(args, "dino_reanchor", False)))
+        if args.record:
+            import cv2
+            gaze_video = cv2.VideoWriter(
+                str(folder / "robot_live_attention.mp4"),
+                cv2.VideoWriter_fourcc(*"mp4v"), 5., (640, 480))
+            if not gaze_video.isOpened():
+                print("WARN: Could not open robot_live_attention.mp4 encoder", flush=True)
+                gaze_video.release()
+                gaze_video = None
 
         def observe_robot_rgb():
             images.update_scene(data, camera="left_camera")
             rgb = images.render().copy()
             observed = tracker.update(rgb, data.time, phase_attention.phase)
             phase_attention.update_live(observed["targets"], data.time)
+            if gaze_video is not None:
+                import cv2
+                visual = rgb.copy()
+                for phase in ("source", "destination"):
+                    item = observed["targets"][phase]
+                    xy = item["robot_xy"]
+                    if xy is not None:
+                        active = phase == phase_attention.phase
+                        color = (255, 240, 0) if active else (65, 185, 255)
+                        center = (int(round(xy[0])), int(round(xy[1])))
+                        cv2.circle(visual, center, 11 if active else 5,
+                                   color, 3 if active else 2)
+                info = (f"Robot t={data.time:.1f}s | "
+                        f"ACTIVE: {phase_attention.active_target} "
+                        f"| {phase_attention.tracking_method}")
+                cv2.putText(visual, info, (12, 25), cv2.FONT_HERSHEY_SIMPLEX,
+                            0.52, (255, 240, 0), 2, cv2.LINE_AA)
+                gaze_video.write(cv2.cvtColor(visual, cv2.COLOR_RGB2BGR))
 
         # Bootstrap from the CURRENT physical Reachy camera, not from an
         # assumed fixed head image. Both source and goal are tracked.
@@ -749,6 +777,8 @@ def run(args, runtime=None):
         return bool(success)
     finally:
         arm.frame_callback = None
+        if gaze_video is not None:
+            gaze_video.release()
         if tracker is not None:
             tracker.save(folder / "live_gaze_tracking.json")
         if phase_attention is not None:
