@@ -16,8 +16,8 @@ All objects have **free joints and collision geometry**. The crate and bins are 
 
 ### Presets
 
-1. **photo** – all 6 objects are placed in bins, approximately matching the supplied image: black bin has red cuboid and black cube; white bin has cream cylinder and white cube; red bin has white cuboid and red cube. This layout is useful to validate visual correspondence but extracting objects from small bins may be difficult for a gripper.
-2. **sorting** – red and black cubes are placed **on the table in front of the tray**; four remaining shapes stay in the bins as distractors. The robot can pick up the two cubes and place them into the matching bins. The target bins contain the cuboids; revise this clutter if contact makes the first grasp-and-place unreliable.
+1. **photo** - all 6 objects are placed in bins, approximately matching the supplied image: black bin has red cuboid and black cube; white bin has cream cylinder and white cube; red bin has white cuboid and red cube. This layout is useful to validate visual correspondence but extracting objects from small bins may be difficult for a gripper.
+2. **sorting** - red and black cubes are placed **on the table in front of the tray**; four remaining shapes stay in the bins as distractors. The robot can pick up the two cubes and place them into the matching bins. The target bins contain the cuboids; revise this clutter if contact makes the first grasp-and-place unreliable.
 
 Start with **sorting**, and simplify further (e.g. temporarily remove non-target distractors) if needed. Object order and bin targets can be changed from human demonstration signals without regenerating assets.
 
