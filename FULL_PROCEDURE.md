@@ -102,12 +102,13 @@ seven-step execution.
 | S4 | White container → wooden box; `white_bin_in_tray` | S1 |
 | S5 | Red container → wooden box; `red_bin_in_tray` | S2 |
 | S6 | Black container → wooden box; `black_bin_in_tray` | S3 |
-| S7 | Push wooden box to human's left; `tray_moved_left` | S3, S4, S5, S6 |
+| S7 | Push wooden box to human's left; `tray_moved_left` | S4, S5, S6 |
 
 S1–S3 are mutually unconstrained and S4–S6 can be reordered once their
-individual prerequisites are satisfied. Explicit S3 → S7 is retained even
-though it is implied by S6 → S7. The user-specified task is a **partial order**,
-not a seven-item timestamp schedule.
+individual prerequisites are satisfied. S3 is an **indirect** prerequisite
+of S7 through S3 → S6 → S7; there is **no direct S3 → S7 edge**.
+The user-specified task is a **partial order**, not a seven-item
+timestamp schedule.
 
 ## Memory / planning contract
 
