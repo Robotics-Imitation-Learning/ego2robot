@@ -287,6 +287,19 @@ def run(args):
     data = mujoco.MjData(model)
     mujoco.mj_forward(model, data)
     arm = RightArm(model, data)
+    if args.record:
+        # Command Reachy's actual articulated head instead of a free camera.
+        neck_aid = mujoco.mj_name2id(
+            model, mujoco.mjtObj.mjOBJ_ACTUATOR, "neck_pitch"
+        )
+        cam_id = mujoco.mj_name2id(
+            model, mujoco.mjtObj.mjOBJ_CAMERA, "left_camera"
+        )
+        if neck_aid < 0 or cam_id < 0:
+            raise RuntimeError("Missing Reachy head pitch actuator or left camera")
+        data.ctrl[neck_aid] = args.head_pitch
+        # Pinhole FOV only: this does NOT model Aria fisheye distortion.
+        model.cam_fovy[cam_id] = args.camera_fovy
     source = args.object
     destination = args.bin or source.replace("_cube", "_bin")
     source_body = data.body("e2r_" + source)
@@ -436,8 +449,16 @@ def main():
                         metavar=("DX", "DY"),
                         help="Randomization test: initial object displacement (m)")
     parser.add_argument("--record", action="store_true")
+    parser.add_argument("--head-pitch", type=float, default=0.35,
+                        help="Physical Reachy neck joint target for recordings")
+    parser.add_argument("--camera-fovy", type=float, default=95.0,
+                        help="Head-camera pinhole vertical FOV, not fisheye")
     parser.add_argument("--output", default="outputs/white_cube")
     args = parser.parse_args()
+    if not -0.7 <= args.head_pitch <= 0.7:
+        parser.error("--head-pitch must be within the Reachy neck joint range")
+    if not 1 < args.camera_fovy < 170:
+        parser.error("--camera-fovy must be between 1 and 170 degrees")
     run(args)
 
 
