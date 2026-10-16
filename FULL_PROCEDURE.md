@@ -99,15 +99,15 @@ seven-step execution.
 
 | Step | Human action / postcondition | Must follow |
 |---|---|---|
-| S1 | White cube → white container; `white_cube_in_bin` | — |
-| S2 | Red cube → red container; `red_cube_in_bin` | — |
-| S3 | Black cube → black container; `black_cube_in_bin` | — |
+| S1 | White cube → white container; `white_cube_in_bin` | None |
+| S2 | Red cube → red container; `red_cube_in_bin` | None |
+| S3 | Black cube → black container; `black_cube_in_bin` | None |
 | S4 | White container → wooden box; `white_bin_in_tray` | S1 |
 | S5 | Red container → wooden box; `red_bin_in_tray` | S2 |
 | S6 | Black container → wooden box; `black_bin_in_tray` | S3 |
 | S7 | Push wooden box to human's left; `tray_moved_left` | S4, S5, S6 |
 
-S1–S3 are mutually unconstrained and S4–S6 can be reordered once their
+S1-S3 are mutually unconstrained and S4-S6 can be reordered once their
 individual prerequisites are satisfied. S3 is an **indirect** prerequisite
 of S7 through S3 → S6 → S7; there is **no direct S3 → S7 edge**.
 The user-specified task is a **partial order**, not a seven-item
@@ -143,7 +143,7 @@ verified physical grasp through `phase_attention.py`.
 Important limitations:
 
 1. The physical executor only implements **cube → colour-matched bin**
-   pick-and-place; it stops explicitly on S4–S7 instead of pretending a
+   pick-and-place; it stops explicitly on S4-S7 instead of pretending a
    seven-step successful robot episode.
 2. The existing `ChallengeMemory` uses Euclidean tray displacement for
    `tray_moved`; this does **not** certify that the box moved to the
