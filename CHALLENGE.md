@@ -138,6 +138,41 @@ See [GROUNDING.md](GROUNDING.md) for the optional trainable cross-modal
 vision-language adapter, which requires real, personally collected
 Aria features and labels.
 
+## Verified right-arm posture tracking (2026-10-16 evening)
+
+The staged servo diagnostic **on the user's workstation** showed:
+- Staged arm joint angles track to within ~0.014 rad for major joints; the
+  requested -0.785 rad wrist pitch was limited to the actual -0.70 rad bound.
+- A high-clearance target `[0.31, -0.24, 0.89]` was physically reached at
+  `[0.310, -0.242, 0.885]` (about 5 mm position error).
+- A low pregrasp `[0.31, -0.24, 0.69]` was reached at
+  `[0.309, -0.239, 0.690]` (about 1 mm position error).
+- Base drift was zero. Measured actuation forces were modest. Reported
+  support-bar collisions alone are not evidence of gripper/table contact.
+
+Thus, the earlier ~115 mm pregrasp failure appears linked to the approach
+posture/path, not inherently unreachable IK or a weak actuator. The current
+`pick_place.py` now executes the validated **staged posture -> high
+clearance -> low pregrasp** sequence before attempting cube contact. It logs
+the *actual* cube contact partners; object/table contact does not count as
+grasp success. The next physical grasp result is **not yet verified**.
+
+Recordings now use the articulated Reachy head camera with a tilted neck and
+95-degree pinhole FOV (not calibrated Aria fisheye optics); the raw diagnostic
+image was mostly sky because the head remained at neutral pitch.
+
+```bash
+git pull --ff-only
+python Ego2Robot_scene/pick_place.py \
+  reachy2_mujoco_assets/scenes/ego2robot_challenge.xml \
+  --mode execute --record
+```
+
+Inspect `outputs/white_cube/04_grasp.png`, `05_close.png`, and
+`06_lift.png` alongside numerical contact partners and measured lift.
+The controller will stop on failed reach or failed lift; do not claim success
+based on static images or mere contact count.
+
 ## First manipulation policy prototype
 
 `Ego2Robot_scene/pick_place.py` is a **new, unverified** direct-MuJoCo
