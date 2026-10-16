@@ -1,0 +1,16 @@
+{
+  "demo_id": "ci_synthetic_smoke",
+  "recording_file": "SYNTHETIC_FIXTURE_NOT_A_REAL_ARIA_RECORDING",
+  "note": "This file exists solely for CI/API testing. It is not evidence of personally collected real data.",
+  "steps": [
+    {
+      "index": 1,
+      "verb": "pick_place",
+      "object": "white_cube",
+      "destination": "white_bin",
+      "start_s": 0,
+      "end_s": 5,
+      "narration": "Put the white cube in the white container."
+    }
+  ]
+}
