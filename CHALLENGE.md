@@ -107,6 +107,37 @@ follows head articulation. `--fovy 95` changes a pinhole projection, not
 Aria's fisheye distortion. Cross-domain DINOv2 correspondence must be
 evaluated with the existing calibrated workflow.
 
+## Motor control diagnosis (2026-10-16)
+
+The first rollouts found successful IK but **12–27 cm end-effector
+tracking errors** and zero actual cube lift. Four cube contact pairs do NOT
+imply a valid grip. This is currently a MOTOR EXECUTION issue, not evidence
+that the high-level visual grounding is wrong.
+
+The current challenge generator fixes Reachy's mobile base by default to
+model a stationary tabletop humanoid. Use `--free-base` only to compare
+against the original drifting/floating robot. The controller now prints
+per-phase base displacement, max joint-position tracking error, and actual
+tip error. It aborts before gripper contact if the tip error is >4.5 cm.
+
+```bash
+git pull --ff-only
+python Ego2Robot_scene/challenge_scene.py --reachy-assets reachy2_mujoco_assets
+python Ego2Robot_scene/actuator_probe.py \
+  reachy2_mujoco_assets/scenes/ego2robot_challenge.xml
+python Ego2Robot_scene/pick_place.py \
+  reachy2_mujoco_assets/scenes/ego2robot_challenge.xml \
+  --mode execute --record
+```
+
+If still off-target, examine the printed **base drift** and per-joint
+errors before changing grasp geometry, installing a VLA, or training data.
+Do not claim this fixes the grasp until measured on the user's machine.
+
+See [GROUNDING.md](GROUNDING.md) for the optional trainable cross-modal
+vision-language adapter, which requires real, personally collected
+Aria features and labels.
+
 ## First manipulation policy prototype
 
 `Ego2Robot_scene/pick_place.py` is a **new, unverified** direct-MuJoCo
