@@ -4,6 +4,12 @@
 
 > **Research direction.** Could a person teach or adapt a robot by demonstrating a task once from their own first-person viewpoint? Human RGB, narration, and eye gaze provide complementary evidence about **what** to do, **which objects** matter, **where** to attend, and **what successful completion looks like**. We transfer this structured information to a different embodiment, then use the robot's own observations and physical state for execution and verification.
 
+
+<p align="center">
+  <img src="data/reachy_actuator_probe.png" alt="Reachy 2 humanoid robot and tabletop manipulation workspace in the MuJoCo simulation" width="780"/>
+</p>
+<p align="center"><sub>Reachy 2 and the tabletop manipulation workspace in MuJoCo.</sub></p>
+
 **What is demonstrated today:** applicant-recorded Aria video and gaze; seven-node symbolic task representation; interfaces for human-reviewed temporal segmentation; real DINOv2 gaze-to-robot correspondence and live Lucas-Kanade tracking; a trainable, goal-conditioned Video-JEPA 2 / language / gaze skill-option model; and a **verified white-cube → white-container physical rollout**. We do **not** claim end-to-end learning from one video, automatic seven-step execution, or robustness under distribution shift.
 
 ## 1. See the human demonstrations and task graph
