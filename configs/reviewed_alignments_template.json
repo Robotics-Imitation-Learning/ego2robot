@@ -1,0 +1,6 @@
+{
+  "schema_version": "ego2robot.reviewed_alignments.v1",
+  "demo_id": "REPLACE_WITH_ACTUAL_DEMO_ID",
+  "notes": "Populate alignments with actual visually reviewed video intervals. No timestamps or omitted events are fabricated. Human ASR timestamps are candidate evidence only.",
+  "alignments": []
+}

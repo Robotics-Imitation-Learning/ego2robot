@@ -13,6 +13,10 @@ gaze queries drive procedural decisions independently of robot time.
 Only cube-to-bin motor skills are currently implemented; a seven-step
 physical rollout is **not** claimed.
 
+The new [multimodal episode pipeline](MULTIMODAL_EPISODES.md) connects the
+full recording to DINO-momentum event evidence, human-reviewed step episodes,
+and **separate, not-yet-trained** VLA data groups for all seven goals.
+
 ## Live, phase-aware robot visual tracking
 
 **Implemented:** two measured Aria gaze-derived DINOv2 query descriptors
@@ -46,23 +50,84 @@ feature-pack builder are now documented in [DEMO_PIPELINE.md](DEMO_PIPELINE.md).
 
 Do not confuse synthetic interface checks with validated Aria observations.
 
-## Architecture
+## Architecture: continuous egocentric video to skill-level episodes
 
-```
-Personally recorded Aria RGB + gaze + narrated actions
-     ├── existing WACV temporal segmentation / action semantics
-     └── existing DINOv2 gaze correspondence / spatial grounding
-                     ↓
-        structured source / verb / destination / task dependencies
-                     ↓
-       optional trained DINOv2-to-language alignment head
-                     ↓
-     physical Reachy 2 right-arm pick–place skills (MuJoCo + Jacobian IK)
-                     ↓
-            verify physical outcome → update task memory
+```mermaid
+flowchart TB
+    VIDEO["Personally collected Aria full-procedure recording"]
+    RGB["RGB frames"]
+    NAR["Narration / audio"]
+    GAZE["Calibrated gaze"]
+    DINO["Frozen DINOv2 roles + momentum event writer"]
+    ASR["Timestamped transcript and step candidates"]
+    EVID["Sparse episodic memory: events, evidence, optional captions"]
+    GRAPH["Seven-step symbolic DAG + goal predicates"]
+    ALIGN["Semantic alignment and human-reviewed episode boundaries"]
+    EP["Seven independent skill episode datasets"]
+    VLA["Per-skill VLA training interface — NOT TRAINED"]
+    TRANSFER["Measured human-to-robot DINO correspondence + live optical flow"]
+    REACHY["Reachy 2: existing cube pick/place IK controller"]
+    MEMORY["Physical outcome verification and execution memory"]
+
+    VIDEO --> RGB --> DINO --> EVID --> ALIGN
+    VIDEO --> NAR --> ASR --> ALIGN
+    VIDEO --> GAZE --> TRANSFER
+    GRAPH --> ALIGN
+    ALIGN --> EP --> VLA
+    TRANSFER --> REACHY
+    VLA -. "future trained policies" .-> REACHY
+    GRAPH --> MEMORY
+    REACHY --> MEMORY
+    MEMORY -. "next enabled step" .-> GRAPH
 ```
 
-We distinguish **analytical action control** from **learned cross-modal grounding**. A pretrained VLA is *not* used. The challenge is not satisfied merely by displaying a human video next to an independently controlled robot: the real recorded signal must feed the actions.
+The **canonical task DAG** permits independent cube operations and independent
+container placements once their own prerequisites are satisfied:
+
+```mermaid
+flowchart LR
+    S1["S1 White cube → white container"] --> S4["S4 White container → wooden box"]
+    S2["S2 Red cube → red container"] --> S5["S5 Red container → wooden box"]
+    S3["S3 Black cube → black container"] --> S6["S6 Black container → wooden box"]
+    S4 --> S7["S7 Push full wooden box left"]
+    S5 --> S7
+    S6 --> S7
+```
+
+There is **no direct S3 → S7 connection**; it follows transitively through S6.
+Machine-readable dependencies live in `configs/procedure_graph.json`.
+
+**Why separate events from steps?** The WACV EST-DINO momentum writer produces
+sparse goal-agnostic visual events, *not* seven magically recovered action
+segments. Narration and optional event captions supply semantic evidence.
+Reviewed alignments connect one or more visual events to a canonical skill;
+only those measured action intervals become standalone MP4 episodes. This
+preserves excluded/uncertain events in the episodic record instead of deleting
+them or assigning fabricated labels.
+
+**Train separately per skill:** each S1–S7 has its own machine-readable dataset
+group in `training_units.json`, suitable for later embodiment-specific VLA
+fine-tuning. The current implementation **prepares episode manifests/clips**
+but does not train a VLA or manufacture robot action targets from human RGB.
+Reachy's verified cube pick/place still uses physical MuJoCo + IK. Robot gaze
+uses visual correspondence and robot-phase gating, not human timestamp replay.
+
+**Machine-readable sources:** [configs/procedure_graph.json](configs/procedure_graph.json)
+and [configs/multimodal_architecture.json](configs/multimodal_architecture.json).
+**Full technical walkthrough and commands:** [MULTIMODAL_EPISODES.md](MULTIMODAL_EPISODES.md).
+
+Quick handoff from the already extracted real full plan:
+
+```bash
+python Ego2Robot_scene/episode_pipeline.py \
+  --plan outputs/full_procedure/<real_demo_id>_full_plan.json \
+  --dino-events /path/to/actual/fine_events.json \
+  --out outputs/skill_episodes
+```
+
+Without human-reviewed boundaries, this emits an auditable **review queue and
+untrained per-skill manifests only**. Add `--reviewed-alignments` and
+`--export-clips` once actual action intervals have been checked.
 
 ## Verified results (October 16, 2026)
 

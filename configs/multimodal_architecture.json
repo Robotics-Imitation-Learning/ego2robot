@@ -1,0 +1,125 @@
+{
+  "schema_version": "ego2robot.architecture.v1",
+  "goal": "from one personally collected full-length egocentric recording to independent skill episodes and optional simulated VLA policies",
+  "input_modalities": [
+    {
+      "id": "rgb",
+      "artifact": "mp4",
+      "source": "personally_recorded",
+      "role": "visual appearance, interaction and clip evidence"
+    },
+    {
+      "id": "narration",
+      "artifact": "transcript segments",
+      "source": "real_audio_ASR_or_reviewed_text",
+      "role": "semantic step candidates, not action duration ground truth"
+    },
+    {
+      "id": "gaze",
+      "artifact": "calibrated Aria gaze and measured DINO query correspondences",
+      "source": "personal_recording_optional",
+      "role": "spatially ground source and target, not transfer action timestamps"
+    }
+  ],
+  "stages": [
+    {
+      "id": "S0",
+      "name": "capture",
+      "implementation": "existing aria_ingest.py",
+      "status": "implemented"
+    },
+    {
+      "id": "S1",
+      "name": "goal_agnostic_visual_event_writing",
+      "implementation": "external est-dino-memory frozen DINO role features + momentum event writer",
+      "status": "external_adapter_only"
+    },
+    {
+      "id": "S2",
+      "name": "event_semantics",
+      "implementation": "event captions and preserved evidence with goal-conditioned procedural views",
+      "status": "external_optional"
+    },
+    {
+      "id": "S3",
+      "name": "narration_to_canonical_tasks",
+      "implementation": "existing full_procedure.py",
+      "status": "implemented_rule_based"
+    },
+    {
+      "id": "S4",
+      "name": "visual_event_to_reviewed_skill_episode",
+      "implementation": "Ego2Robot_scene/episode_pipeline.py",
+      "status": "implemented_explicit_human_review_required"
+    },
+    {
+      "id": "S5",
+      "name": "per_step_VLA_training",
+      "implementation": "training_units.json groups by canonical S1...S7",
+      "status": "dataset_interface_only_not_trained"
+    },
+    {
+      "id": "S6",
+      "name": "embodiment_transfer_and_execution",
+      "implementation": "existing DINO optical flow phase attention + Reachy MuJoCo IK",
+      "status": "implemented_for_cube_to_bin_only"
+    },
+    {
+      "id": "S7",
+      "name": "procedural_state_verification",
+      "implementation": "existing procedure_graph.py and challenge_memory.py",
+      "status": "implemented_with_oracle_subset"
+    }
+  ],
+  "links": [
+    [
+      "S0",
+      "S1"
+    ],
+    [
+      "S0",
+      "S3"
+    ],
+    [
+      "S0",
+      "S6"
+    ],
+    [
+      "S1",
+      "S2"
+    ],
+    [
+      "S1",
+      "S4"
+    ],
+    [
+      "S2",
+      "S4"
+    ],
+    [
+      "S3",
+      "S4"
+    ],
+    [
+      "S4",
+      "S5"
+    ],
+    [
+      "S5",
+      "S6"
+    ],
+    [
+      "S6",
+      "S7"
+    ]
+  ],
+  "task_graph": "configs/procedure_graph.json",
+  "output_schema": "ego2robot.episodes.v1",
+  "constraints": [
+    "Never equate sparse DINO memory events with exact action boundaries without review",
+    "Do not fabricate absent steps or intervals",
+    "Human gaze timestamps index human video only; robot decisions use independent robot state",
+    "Training units do not imply trained checkpoints or robot action supervision",
+    "All episodic events retained even if excluded from goal-conditioned view"
+  ]
+}

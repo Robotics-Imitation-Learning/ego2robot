@@ -1,0 +1,74 @@
+{
+  "schema_version": "ego2robot.task_graph.v1",
+  "provenance": "demonstrator_supplied_dependencies_not_discovered_from_rgb_or_asr",
+  "task": "cube_sort_container_pack_and_leftward_tray_push",
+  "nodes": [
+    {
+      "id": "S1",
+      "goal": "white_cube_in_bin",
+      "verb": "pick_place",
+      "object": "white_cube",
+      "destination": "white_bin",
+      "requires": []
+    },
+    {
+      "id": "S2",
+      "goal": "red_cube_in_bin",
+      "verb": "pick_place",
+      "object": "red_cube",
+      "destination": "red_bin",
+      "requires": []
+    },
+    {
+      "id": "S3",
+      "goal": "black_cube_in_bin",
+      "verb": "pick_place",
+      "object": "black_cube",
+      "destination": "black_bin",
+      "requires": []
+    },
+    {
+      "id": "S4",
+      "goal": "white_bin_in_tray",
+      "verb": "pick_place",
+      "object": "white_bin",
+      "destination": "wooden_tray",
+      "requires": [
+        "S1"
+      ]
+    },
+    {
+      "id": "S5",
+      "goal": "red_bin_in_tray",
+      "verb": "pick_place",
+      "object": "red_bin",
+      "destination": "wooden_tray",
+      "requires": [
+        "S2"
+      ]
+    },
+    {
+      "id": "S6",
+      "goal": "black_bin_in_tray",
+      "verb": "pick_place",
+      "object": "black_bin",
+      "destination": "wooden_tray",
+      "requires": [
+        "S3"
+      ]
+    },
+    {
+      "id": "S7",
+      "goal": "tray_moved_left",
+      "verb": "push",
+      "object": "wooden_tray",
+      "destination": "left",
+      "requires": [
+        "S4",
+        "S5",
+        "S6"
+      ]
+    }
+  ],
+  "notes": "S7 has direct prerequisites S4 S5 S6 only; S3 reaches S7 transitively through S6."
+}
