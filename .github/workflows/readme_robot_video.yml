@@ -1,0 +1,76 @@
+name: Build clearly labeled Reachy simulation video for README
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/readme_robot_video.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  reachy_preview:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 9
+    env:
+      MUJOCO_GL: osmesa
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install offscreen MuJoCo and FFmpeg prerequisites
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y libosmesa6 libosmesa6-dev libgl1-mesa-dev
+          python -m pip install -r requirements.txt opencv-python-headless
+      - name: Download official Reachy 2 assets and build challenge scene
+        run: |
+          git clone --depth 1 https://github.com/pollen-robotics/reachy2_mujoco_assets.git
+          python Ego2Robot_scene/challenge_scene.py --reachy-assets reachy2_mujoco_assets
+          python Ego2Robot_scene/render_gaze_reference.py \
+            reachy2_mujoco_assets/scenes/ego2robot_challenge.xml \
+            --pitch-options 0.35 --out outputs/synthetic_reference
+      - name: Build EXPLICITLY synthetic visual seed pixels for simulation smoke test
+        run: |
+          python - <<'PY'
+          import json
+          import numpy as np
+          from pathlib import Path
+          masks=np.load('outputs/synthetic_reference/robot_oracle_masks.npz')
+          events=json.loads(Path('tests/fixtures/synthetic_aria_gaze.json').read_text())
+          for e in events['events']:
+              yy,xx=np.where(masks[e['target']])
+              assert len(xx)>10
+              e['robot_xy']=[float(np.median(xx)),float(np.median(yy))]
+          Path('outputs/synthetic_visual_seeds.json').write_text(json.dumps(events))
+          print('These are MuJoCo oracle reference pixel seeds, NOT real Aria gaze transfer.')
+          PY
+      - name: Produce physically verified Reachy video with live optical flow
+        run: |
+          python -u Ego2Robot_scene/run_grounded.py \
+            --manifest tests/fixtures/synthetic_aria_manifest.json \
+            --gaze-matches outputs/synthetic_visual_seeds.json \
+            --scene reachy2_mujoco_assets/scenes/ego2robot_challenge.xml \
+            --out outputs/readme_robot --run-sim --record --track-gaze
+      - name: Compress and label robot MP4 and GIF as synthetic-seeded engineering demo
+        run: |
+          set -euo pipefail
+          source='outputs/readme_robot/robot/ci_synthetic_first_step/01_white/robot_live_attention.mp4'
+          test -s "$source"
+          ffmpeg -hide_banner -loglevel error -y -i "$source" \
+            -vf 'scale=560:-2:flags=lanczos' -c:v libx264 -preset veryfast \
+            -crf 29 -pix_fmt yuv420p -movflags +faststart \
+            docs/media/robot_simulation_synthetic_seeds.mp4
+          ffmpeg -hide_banner -loglevel error -y -i "$source" \
+            -filter_complex '[0:v]fps=1.8,scale=380:-1:flags=lanczos,split[a][b];[a]palettegen=stats_mode=diff[p];[b][p]paletteuse=dither=bayer:bayer_scale=5' \
+            -loop 0 docs/media/robot_simulation_synthetic_seeds.gif
+          test -s docs/media/robot_simulation_synthetic_seeds.mp4
+          test -s docs/media/robot_simulation_synthetic_seeds.gif
+          ls -lh docs/media/robot_simulation_synthetic_seeds.*
+      - name: Commit optional simulator preview video to main
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git pull --ff-only
+          git add docs/media/robot_simulation_synthetic_seeds.mp4 docs/media/robot_simulation_synthetic_seeds.gif
+          git diff --cached --quiet || (git commit -m "Add explicitly synthetic-seeded Reachy physics preview for README" && git push)
