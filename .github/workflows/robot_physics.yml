@@ -91,6 +91,24 @@ jobs:
           echo "No black-cube physical placement achieved in diagnostic sweep."
           # Only white is a strict gating regression today.
 
+      - name: Diagnose neighbour interference on black cube
+        run: |
+          unset MUJOCO_GL
+          for height in 0.010 0.012; do
+            echo "=== BLACK ISOLATED height=${height} ==="
+            if python -u Ego2Robot_scene/pick_place.py \
+                reachy2_mujoco_assets/scenes/ego2robot_compact.xml \
+                --object black_cube --mode execute --grasp-style side \
+                --approach-open-angle 1.0 --pinch-height "$height" \
+                --isolate-other-cubes > /tmp/black_isolated.log 2>&1; then
+              code=0
+            else
+              code=$?
+            fi
+            grep -E 'First gripper|grasp: executed|Cube contacts after closure:|Cube lifted by|One-second static hold|after_transport:|cube_in_bin_oracle|GRASP NOT|PASS: physical|RuntimeError' /tmp/black_isolated.log || true
+            echo "Black isolated exit status: $code"
+          done
+
       - name: Measure right-arm feasible tabletop band
         run: |
           unset MUJOCO_GL
