@@ -1,10 +1,10 @@
 # Ego2Robot: Learning Robot Skills from Egocentric Human Demonstrations
 
-**A reproducible research prototype connecting multimodal Project Aria demonstrations to procedural task graphs, visual correspondence, a trainable hierarchical vision–language–action (VLA) architecture, and physically verified Reachy 2 manipulation in MuJoCo.**
+**A reproducible research prototype connecting multimodal Project Aria demonstrations to procedural task graphs, visual correspondence, a trainable hierarchical vision-language-action (VLA) architecture, and physically verified Reachy 2 manipulation in MuJoCo.**
 
 > **Research direction.** Could a person teach or adapt a robot by demonstrating a task once from their own first-person viewpoint? Human RGB, narration, and eye gaze provide complementary evidence about **what** to do, **which objects** matter, **where** to attend, and **what successful completion looks like**. We transfer this structured information to a different embodiment, then use the robot's own observations and physical state for execution and verification.
 
-**What is demonstrated today:** applicant-recorded Aria video and gaze; seven-node symbolic task representation; interfaces for human-reviewed temporal segmentation; real DINOv2 gaze-to-robot correspondence and live Lucas–Kanade tracking; a trainable, goal-conditioned Video-JEPA 2 / language / gaze skill-option model; and a **verified white-cube → white-container physical rollout**. We do **not** claim end-to-end learning from one video, automatic seven-step execution, or robustness under distribution shift.
+**What is demonstrated today:** applicant-recorded Aria video and gaze; seven-node symbolic task representation; interfaces for human-reviewed temporal segmentation; real DINOv2 gaze-to-robot correspondence and live Lucas-Kanade tracking; a trainable, goal-conditioned Video-JEPA 2 / language / gaze skill-option model; and a **verified white-cube → white-container physical rollout**. We do **not** claim end-to-end learning from one video, automatic seven-step execution, or robustness under distribution shift.
 
 ## 1. See the human demonstrations and task graph
 
@@ -14,7 +14,7 @@ One continuous first-person recording depicts the longer task. Its measured gaze
 
 <table>
 <tr>
-<th width="47%">Full procedure — Project Aria + measured gaze</th>
+<th width="47%">Full procedure: Project Aria + measured gaze</th>
 <th width="53%">Canonical seven-step causal task graph</th>
 </tr>
 <tr>
@@ -51,7 +51,7 @@ flowchart LR
 
 **Implemented locally:** [`full_procedure.py`](Ego2Robot_scene/full_procedure.py) recognizes narrated canonical actions; [`episode_pipeline.py`](Ego2Robot_scene/episode_pipeline.py) ingests externally produced temporal events, builds an auditable alignment review queue, and exports separate clips **only with approved start/end times**. The external DINO-momentum *automatic boundary generator is not bundled*, and the seven graph edges are not learned automatically.
 
-### A closer look: Step 1 — white cube into white container
+### A closer look: Step 1: white cube into white container
 
 <a href="data/19a5c812-520b-4f8f-89ee-9b7b0879ca23_480_gaze_red_circle.mp4"><img alt="Open the real standalone Step 1 demonstration with measured gaze" src="docs/media/step1_preview.gif" width="560"/></a>
 
@@ -97,7 +97,7 @@ flowchart TB
 | **Narration → tasks** | [`full_procedure.py`](Ego2Robot_scene/full_procedure.py) | Whisper interface + rule-based task mention extraction. ASR quality and full-recording transcripts are not benchmarked. |
 | **Temporal segmentation** | [`episode_pipeline.py`](Ego2Robot_scene/episode_pipeline.py) | Event alignment/review and real per-step clip export implemented; external automatic visual boundary writer **not** included. |
 | **Task graph and memory** | [`procedure_graph.py`](Ego2Robot_scene/procedure_graph.py), [graph JSON](configs/procedure_graph.json) | Seven canonical goals, prerequisites, and outcome-dependent state updates; graph authored from task specification. |
-| **Human gaze → robot vision** | [`transfer_aria_gaze.py`](Ego2Robot_scene/transfer_aria_gaze.py), [`live_gaze_tracker.py`](Ego2Robot_scene/live_gaze_tracker.py) | DINOv2 patch correspondence + pyramidal Lucas–Kanade + optional live re-anchoring. Real Step 1 source/destination correspondences accepted; oracle object masks are used for offline correspondence labeling. |
+| **Human gaze → robot vision** | [`transfer_aria_gaze.py`](Ego2Robot_scene/transfer_aria_gaze.py), [`live_gaze_tracker.py`](Ego2Robot_scene/live_gaze_tracker.py) | DINOv2 patch correspondence + pyramidal Lucas-Kanade + optional live re-anchoring. Real Step 1 source/destination correspondences accepted; oracle object masks are used for offline correspondence labeling. |
 | **Trainable hierarchical VLA** | [`trainable_vla.py`](Ego2Robot_scene/trainable_vla.py) | Learnable language/vision/gaze fusion and skill, target, completion, mistake, future-state heads; CPU training/inference contract passes. **No independent real-data accuracy established.** |
 | **Video-JEPA 2** | [`vjepa2_encoder.py`](Ego2Robot_scene/vjepa2_encoder.py), [`make_vla_episode_pack.py`](Ego2Robot_scene/make_vla_episode_pack.py) | Frozen pretrained video features for observation and demonstrated terminal-state goal; completion/error heads trainable separately. Not a trained Video-JEPA 2 action/world model. |
 | **Robot action and postconditions** | [`pick_place.py`](Ego2Robot_scene/pick_place.py), [`execute_demo.py`](Ego2Robot_scene/execute_demo.py) | Physical white-cube grasp, transport and placement verified in MuJoCo. IK still uses privileged object poses; remaining longer-horizon skills not demonstrated. |
@@ -109,7 +109,7 @@ flowchart TB
 
 The research hypothesis is that a **person's first-person procedural demonstration** offers more than generic imitation frames: narration identifies *what*, gaze identifies *where*, the human terminal scene offers *what success looks like*, and the task graph records *which consequences matter*. We combine those sources into a **trainable skill-level VLA interface** that leaves embodiment-specific motor execution and verification explicit.
 
-Crucially, **procedural time and motor time are separated**. Gaze descriptors select source/goal regions, Lucas–Kanade tracks those regions in *robot* frames, and Reachy's actual stable grasp changes active attention; there is no hand-designed timestamp replay. The learned model can be trained from actual observed robot pre/post states paired with a human goal clip, while physical success is checked separately. Novelty is an **architectural proposal**, not a demonstrated improvement over competing VLAs.
+Crucially, **procedural time and motor time are separated**. Gaze descriptors select source/goal regions, Lucas-Kanade tracks those regions in *robot* frames, and Reachy's actual stable grasp changes active attention; there is no hand-designed timestamp replay. The learned model can be trained from actual observed robot pre/post states paired with a human goal clip, while physical success is checked separately. Novelty is an **architectural proposal**, not a demonstrated improvement over competing VLAs.
 
 ## 4. Reproduce the current implementation
 
@@ -175,10 +175,10 @@ The aim is a reusable human-to-robot skill acquisition interface: **demonstrate 
 
 This prototype builds on the following open research tools and hardware/simulation resources. We cite the versions **actually used** rather than claiming additional models were integrated:
 
-- **Project Aria** — Meta's first-person sensing platform used to collect the RGB and eye-gaze demonstrations. [Project Aria](https://www.projectaria.com/) · [Project Aria Tools](https://github.com/facebookresearch/projectaria_tools).
-- **Video-JEPA 2** — frozen pretrained video representations for the current observation and demonstrated goal-state encoding. [Official implementation](https://github.com/facebookresearch/vjepa2) · [Model checkpoint](https://huggingface.co/facebook/vjepa2-vitl-fpc64-256).
-- **DINOv2** — the visual descriptor backbone used for human-gaze-to-robot correspondence (specifically `dinov2_vits14_reg`); **DINOv3 is not used**. [Official implementation](https://github.com/facebookresearch/dinov2).
-- **Reachy 2 and MuJoCo** — humanoid embodiment and physics simulation. [Reachy 2 MuJoCo assets](https://github.com/pollen-robotics/reachy2_mujoco_assets) · [MuJoCo](https://mujoco.org/).
+- **Project Aria**: Meta's first-person sensing platform used to collect the RGB and eye-gaze demonstrations. [Project Aria](https://www.projectaria.com/) · [Project Aria Tools](https://github.com/facebookresearch/projectaria_tools).
+- **Video-JEPA 2**: frozen pretrained video representations for the current observation and demonstrated goal-state encoding. [Official implementation](https://github.com/facebookresearch/vjepa2) · [Model checkpoint](https://huggingface.co/facebook/vjepa2-vitl-fpc64-256).
+- **DINOv2**: the visual descriptor backbone used for human-gaze-to-robot correspondence (specifically `dinov2_vits14_reg`); **DINOv3 is not used**. [Official implementation](https://github.com/facebookresearch/dinov2).
+- **Reachy 2 and MuJoCo**: humanoid embodiment and physics simulation. [Reachy 2 MuJoCo assets](https://github.com/pollen-robotics/reachy2_mujoco_assets) · [MuJoCo](https://mujoco.org/).
 
 ### Research works informing the design
 
