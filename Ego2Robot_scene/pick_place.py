@@ -552,7 +552,7 @@ def run(args):
             print("GRASP NOT VERIFIED: cube did not rise 3.5 cm. "
                   "Stop here and adjust approach/gripper; no placement "
                   "success claimed.", flush=True)
-            return
+            return False
 
         # Re-observe the actual held cube-to-gripper displacement rather
         # than assuming the object is perfectly centered in the gripper.
@@ -590,6 +590,7 @@ def run(args):
             print("Task unsuccessful; inspect actual contacts and snapshots.")
         else:
             print("PASS: physical cube-in-bin predicate satisfied.")
+        return bool(success)
     finally:
         if images is not None:
             images.close()
@@ -608,6 +609,8 @@ def main():
                         help="Reachable side pinch (default); topdown currently IK-infeasible")
     parser.add_argument("--pinch-height", type=float, default=0.014,
                         help="Side-grasp pad-center height above cube center (m)")
+    parser.add_argument("--auto-clearance", action="store_true",
+                        help="Try 8, 12, 16, 20 mm pinch heights on fresh simulations")
     parser.add_argument("--jitter", type=float, nargs=2, default=None,
                         metavar=("DX", "DY"),
                         help="Randomization test: initial object displacement (m)")
@@ -624,7 +627,24 @@ def main():
         parser.error("--pinch-height must be between 0 and 0.025 m")
     if not 1 < args.camera_fovy < 170:
         parser.error("--camera-fovy must be between 1 and 170 degrees")
-    run(args)
+    if args.auto_clearance:
+        if args.grasp_style != "side" or args.mode != "execute":
+            parser.error("--auto-clearance requires --grasp-style side --mode execute")
+        saved_output = args.output
+        for clearance in (0.008, 0.012, 0.016, 0.020):
+            print("\n=== TRY SIDE PINCH HEIGHT", clearance, "m ===", flush=True)
+            args.pinch_height = clearance
+            args.output = saved_output + "_clearance_" + str(int(clearance * 1000)) + "mm"
+            try:
+                if run(args):
+                    print("VERIFIED successful placement at", clearance, "m")
+                    break
+            except RuntimeError as exc:
+                print("Attempt failed:", str(exc), flush=True)
+        else:
+            raise SystemExit("All tested clearances failed. Inspect first-contact logs.")
+    else:
+        run(args)
 
 
 if __name__ == "__main__":
