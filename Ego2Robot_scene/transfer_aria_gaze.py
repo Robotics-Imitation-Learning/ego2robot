@@ -96,7 +96,7 @@ def embed(image,model,device,size):
         y=F.normalize(y.float(),p=2,dim=1)
     return y[0].cpu().numpy()   # D,hpatch,wpatch
 
-def dense_match(src_desc,robot_desc,sq_x,sq_y,size,valid_robot=None):
+def dense_match(src_desc,robot_desc,sq_x,sq_y,size,valid_robot=None,return_query=False):
     # For a source gaze patch, aggregate a 3x3 neighbourhood for stability.
     _,h,w=src_desc.shape
     ix=min(max(int(sq_x/size*w),0),w-1)
@@ -108,7 +108,8 @@ def dense_match(src_desc,robot_desc,sq_x,sq_y,size,valid_robot=None):
     if valid_robot is not None:
         score=np.where(valid_robot,score,-np.inf)
     j,i=np.unravel_index(np.argmax(score),score.shape)
-    return score,(int(i),int(j)),float(score[j,i])
+    output=(score,(int(i),int(j)),float(score[j,i]))
+    return (*output,query.copy()) if return_query else output
 
 def mask_grid(mask,grid_h,grid_w):
     # Label patch by geometric visibility in center neighbourhood rather
@@ -266,7 +267,7 @@ def main():
         for xx in range(rgrid[1]):
             rvalid[yy,xx]=px0<=xx+0.5<=px1 and py0<=yy+0.5<=py1
     a.out.mkdir(parents=True,exist_ok=True)
-    events=[];debug=[]
+    events=[];debug=[];query_descriptors={}
     for t in sample_times:
         if t<0 or t>count/fps:raise ValueError(f"Time {t} is outside MP4 duration {count/fps}")
         idx=int(round(t*fps))
@@ -280,7 +281,8 @@ def main():
         px,py,original=gaze_to_square(row[1],row[2],frame.size,source_mapping,
             a.coords,(a.gaze_width,a.gaze_height) if a.gaze_width else None)
         f=embed(square,model,device,a.image_size)
-        similarity,peak,sim=dense_match(f,r_features,px,py,a.image_size,rvalid)
+        similarity,peak,sim,query=dense_match(
+            f,r_features,px,py,a.image_size,rvalid,return_query=True)
         label,reason,region_scores,roi_peak=interpret(similarity,masks,robot.size,r_mapping,a.min_cosine,a.min_margin)
         rp=roi_peak if roi_peak is not None else peak
         # Target coordinate uses the selected object's strongest DINO patch.
@@ -313,10 +315,16 @@ def main():
         debug.append(record)
         print(json.dumps(record,indent=2),flush=True)
         if label:
+            query_key=f"query_{len(debug)-1:04d}"
+            query_descriptors[query_key]=query.astype(np.float32)
             events.append({"timestamp_s":float(t),"target":label,
+                "query_descriptor_path":str((a.out/"gaze_query_features.npz").resolve()),
+                "query_descriptor_key":query_key,
                "score":max(0,min(1,float(region_scores[label]))),
                "raw_cosine":float(region_scores[label]),"robot_xy":[rx,ry],
                "provenance":"DINO patch match; privileged MuJoCo mask object-label association"})
+    if query_descriptors:
+        np.savez_compressed(a.out/"gaze_query_features.npz",**query_descriptors)
     result={"events":events,"debug":debug,
             "model":a.model,"video":str(a.video),"gaze_csv":str(a.gaze_csv),
             "warning":"cosine similarity is NOT a calibrated confidence; MuJoCo segmentation labels are privileged; no accuracy claim without visual inspection",

@@ -35,6 +35,10 @@ def main():
     p.add_argument("--scene",type=Path,help="Verified Reachy MuJoCo MJCF")
     p.add_argument("--run-sim",action="store_true")
     p.add_argument("--record",action="store_true")
+    p.add_argument("--track-gaze",action="store_true",
+                   help="Run live robot head-camera pyramidal optical flow")
+    p.add_argument("--dino-reanchor",action="store_true",
+                   help="Re-anchor using measured human gaze DINO descriptors")
     p.add_argument("--vjepa-state-model",type=Path,
                    help="Previously trained preliminary incomplete/complete ridge probe")
     p.add_argument("--vjepa-state-features",type=Path,
@@ -44,6 +48,8 @@ def main():
         p.add_argument("--"+role+"-model",type=Path)
         p.add_argument("--"+role+"-features",type=Path)
     a=p.parse_args()
+    if a.dino_reanchor and not a.track_gaze:
+        p.error("--dino-reanchor requires --track-gaze")
     manifest=json.loads(a.manifest.read_text())
     transcript=a.transcript or (Path(manifest["transcript"]) if manifest.get("transcript") else None)
     if transcript is None:
@@ -93,6 +99,10 @@ def main():
              "--output",str(a.out/"robot")]
         if a.record:
             cmd.append("--record")
+        if a.track_gaze:
+            cmd.append("--track-gaze")
+        if a.dino_reanchor:
+            cmd.append("--dino-reanchor")
         subprocess.run(cmd,check=True)
     else:
         print("DRY RUN: physical execution not requested. --run-sim will execute first step.")

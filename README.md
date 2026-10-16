@@ -4,6 +4,19 @@
 
 A lightweight, reproducible Humanoid internship research challenge prototype. Research question: **can a humanoid execute a multi-step task by transferring human-derived object/goal correspondence and procedure, while retaining a small embodiment-specific motor controller and explicit task-state memory?**
 
+## Live, phase-aware robot visual tracking
+
+**Implemented:** two measured Aria gaze-derived DINOv2 query descriptors
+(source + destination), continuous Reachy head-camera pyramidal Lucas–Kanade
+tracking with optional DINOv2 re-anchoring, and an event-driven attention
+switch **only after verified physical stable grasp**. Human and robot
+timelines are independent. Tracks and annotated robot-camera MP4 are saved
+during physical execution. The motor policy still queries privileged
+MuJoCo object geometry; this is not vision-only motor control.
+
+See **[LIVE_PHASE_TRACKING.md](LIVE_PHASE_TRACKING.md)** for the exact real
+Aria → robot execution command, outputs, and evidence boundaries.
+
 ## Real Aria gaze to Reachy head-camera correspondence
 
 The key experiment now has a runnable DINOv2 feature matcher, synchronized
