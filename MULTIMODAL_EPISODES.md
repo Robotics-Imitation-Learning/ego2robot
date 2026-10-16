@@ -60,6 +60,14 @@ flowchart TB
 human video. A verified robot grasp changes active gaze phase during robot
 execution; human times do not schedule robot motor actions.
 
+**Proposed episode windows** are formed from the union of actual visual
+events that overlap a narration mention. The manifest records these as
+`proposed_visual_window_s`, explicitly labeled **NOT VERIFIED**.
+An actual skill clip is emitted only after a person validates its
+`start_s` and `end_s` in the recorded RGB timeline. Where the optional
+goal-conditioned event view is available, excluded and uncertain event IDs
+are reported separately while all original events remain recoverable.
+
 **Visual events are not step labels.** The WACV memory writer proposes sparse
 visual events from role-conditioned frozen DINO features and momentum. It
 retains all episodic evidence, including interruptions. The semantic layer
