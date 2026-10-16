@@ -1,5 +1,21 @@
 # Ego2Robot
 
+## Trainable hierarchical VLA (Video-JEPA2 + gaze + language + graph + robot skills)
+
+**[Trainable architecture, loss definitions, real-data training and execution commands](TRAINABLE_HIERARCHICAL_VLA.md)**
+
+The trainable path learns a language-conditioned atomic skill/source/destination
+selector, a goal-state completion head, a mistake head (requires actual error
+labels), and a next-state embedding predictor from frozen **Video-JEPA2**
+video features, measured human DINOv2 gaze queries, and a demonstrated
+human final-state clip. It then dispatches valid skills to the existing
+physically verified Reachy 2 IK/contact controller and separately records
+MuJoCo oracle completion. A live option can re-encode current/final Reachy
+RGB, not just replay cached features. This is **trainable hierarchical option
+selection**, not a learned continuous joint-control policy or proof of
+cross-demonstration accuracy.
+
+
 **Gaze-grounded procedural transfer from human egocentric demonstrations to a simulated humanoid manipulator.**
 
 A lightweight, reproducible Humanoid internship research challenge prototype. Research question: **can a humanoid execute a multi-step task by transferring human-derived object/goal correspondence and procedure, while retaining a small embodiment-specific motor controller and explicit task-state memory?**
