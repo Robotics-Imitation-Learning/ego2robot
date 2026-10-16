@@ -88,34 +88,34 @@ def read_transcript(path):
 
 def _hits(text):
     """Conservative, clause-local matching; never join unrelated sentences."""
-    t = re.sub(r"\\s+", " ", text.lower())
+    t = re.sub(r"\s+", " ", text.lower())
     out = []
-    action = re.compile(r"\\b(put|place|drop|insert|move|transfer|carry|push)\\b")
-    other_object = re.compile(r"\\b(?:white|red|black)\\s+"
-                              r"(?:cube|block|container|bin|box)\\b")
+    action = re.compile(r"\b(put|place|drop|insert|move|transfer|carry|push)\b")
+    other_object = re.compile(r"\b(?:white|red|black)\s+"
+                              r"(?:cube|block|container|bin|box)\b")
     for clause in re.finditer(r"[^.!?;]+", t):
         part, offset = clause.group(), clause.start()
         for color, cube_id, container_id in (("white", "S1", "S4"),
                                               ("red", "S2", "S5"),
                                               ("black", "S3", "S6")):
-            for m in re.finditer(r"\\b" + color + r"\\s+(?:cube|block)\\b", part):
+            for m in re.finditer(r"\b" + color + r"\s+(?:cube|block)\b", part):
                 after = part[m.end():m.end() + 125]
-                dst = re.search(r"\\b" + color + r"\\s+(?:box|bin|container)\\b", after)
+                dst = re.search(r"\b" + color + r"\s+(?:box|bin|container)\b", after)
                 if dst and not other_object.search(after[:dst.start()]):
                     context = part[max(0, m.start() - 55):m.end() + dst.end()]
                     if action.search(context):
                         out.append((cube_id, offset + m.start()))
-            for m in re.finditer(r"\\b" + color + r"\\s+(?:container|bin|box)\\b", part):
+            for m in re.finditer(r"\b" + color + r"\s+(?:container|bin|box)\b", part):
                 after = part[m.end():m.end() + 125]
-                dst = re.search(r"\\bwooden\\s+(?:box|tray|crate|container)\\b", after)
+                dst = re.search(r"\bwooden\s+(?:box|tray|crate|container)\b", after)
                 if dst and not other_object.search(after[:dst.start()]):
                     context = part[max(0, m.start() - 55):m.end() + dst.end()]
                     if action.search(context):
                         out.append((container_id, offset + m.start()))
-        if (re.search(r"\\b(?:wooden\\s+box|wooden\\s+tray|wooden\\s+crate)\\b", part)
-                and re.search(r"\\b(push|slide|move|shift)\\b", part)
-                and re.search(r"\\bleft\\b", part)):
-            m = re.search(r"\\bwooden\\s+(?:box|tray|crate)\\b", part)
+        if (re.search(r"\b(?:wooden\s+box|wooden\s+tray|wooden\s+crate)\b", part)
+                and re.search(r"\b(push|slide|move|shift)\b", part)
+                and re.search(r"\bleft\b", part)):
+            m = re.search(r"\bwooden\s+(?:box|tray|crate)\b", part)
             out.append(("S7", offset + m.start()))
     return out
 
