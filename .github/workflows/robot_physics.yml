@@ -66,6 +66,31 @@ jobs:
             echo "COMPACT ${color} exit status: $code (exploratory)"
           done
 
+      - name: Black cube physical grasp sensitivity (diagnostic only)
+        run: |
+          unset MUJOCO_GL
+          for opening in 0.8 1.0 1.2 1.6; do
+            for height in 0.008 0.010 0.012 0.014; do
+              echo "=== BLACK opening=${opening}, height=${height} ==="
+              if python -u Ego2Robot_scene/pick_place.py \
+                  reachy2_mujoco_assets/scenes/ego2robot_compact.xml \
+                  --object black_cube --mode execute --grasp-style side \
+                  --approach-open-angle "$opening" --pinch-height "$height" \
+                  > /tmp/black_try.log 2>&1; then
+                status=0
+              else
+                status=$?
+              fi
+              grep -E 'Cube lifted by|One-second static hold|after_transport:|GRASP NOT|cube_in_bin_oracle|RuntimeError|PASS: physical' /tmp/black_try.log || true
+              if [ "$status" -eq 0 ] && grep -q 'PASS: physical cube-in-bin predicate satisfied.' /tmp/black_try.log; then
+                echo "BLACK PHYSICAL PLACE SUCCESS opening=${opening} height=${height}"
+                exit 0
+              fi
+            done
+          done
+          echo "No black-cube physical placement achieved in diagnostic sweep."
+          # Only white is a strict gating regression today.
+
       - name: Measure right-arm feasible tabletop band
         run: |
           unset MUJOCO_GL
