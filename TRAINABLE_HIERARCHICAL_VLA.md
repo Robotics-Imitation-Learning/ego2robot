@@ -99,9 +99,23 @@ python Ego2Robot_scene/run_grounded.py \
   --out outputs/grounded_learned --run-sim --record \
   --track-gaze --dino-reanchor \
   --hierarchical-vla-model outputs/vla/hierarchical_vla.pt \
-  --hierarchical-vla-features outputs/vla/demo_01_features.npz \
-  --hierarchical-vla-index 0
+  --hierarchical-vla-reference-pack outputs/vla/demo_01_features.npz
 ```
+
+With `--hierarchical-vla-reference-pack`, the runner now renders the
+**current new MuJoCo Reachy head-camera RGB**, passes it through Video-JEPA2,
+reuses the authentic human-goal/gaze query vectors, and infers the learned
+option from that fresh observation. After actual physical execution,
+it extracts the **new** `10_final.png` RGB, re-encodes that image through
+the same frozen model, and saves
+`outputs/grounded_learned/vla_postcondition_diagnostic.json` containing
+the learned completion/error scores beside the *independent* MuJoCo state
+predicate. This is a real executed visual inference path, but CPU V-JEPA2
+embedding is slow and scores are still uncalibrated.
+
+The existing `--hierarchical-vla-features` option is a fast replay/diagnostic
+path; it does not inspect a fresh robot view. Do not use that option to
+claim closed-loop visual grounding on a new run.
 
 The learned policy predicts the `pick_place(white_cube,white_bin)` atomic
 option and completion/error status. The runner **abstains** if the learned
