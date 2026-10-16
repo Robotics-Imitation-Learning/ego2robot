@@ -410,6 +410,11 @@ def run(args, runtime=None):
     destination = args.bin or source.replace("_cube", "_bin")
     source_body = data.body("e2r_" + source)
     bin_body = data.body("e2r_" + destination)
+    phase_attention = getattr(args, "phase_attention", None)
+    if phase_attention is not None:
+        if phase_attention.source != source or phase_attention.destination != destination:
+            raise RuntimeError("Phase target labels disagree with physical motor command")
+        phase_attention.observe("skill_started", data.time)
 
     if getattr(args, "isolate_other_cubes", False):
         # DIAGNOSTIC ONLY: change initial positions of other loose cubes.
@@ -520,6 +525,9 @@ def run(args, runtime=None):
     def snapshot(name):
         if images is not None:
             render_stage(images, data, folder, name)
+        if phase_attention is not None:
+            raw = folder / f"{name}.png" if images is not None else None
+            phase_attention.snapshot(name, data.time, raw)
 
     try:
         arm.step(0.3)
@@ -538,6 +546,8 @@ def run(args, runtime=None):
         snapshot("02_high")
         arm.go("pregrasp", pregrasp, rot, duration=3.0)
         snapshot("03_pregrasp")
+        if phase_attention is not None:
+            phase_attention.observe("pregrasp_reached", data.time)
         try:
             arm.go("grasp", pickup_tip, rot, duration=3.0)
         except RuntimeError:
@@ -556,6 +566,8 @@ def run(args, runtime=None):
         arm.step(1.1)
         arm.pinch_debug(source, "after close")
         snapshot("05_close")
+        if phase_attention is not None:
+            phase_attention.observe("gripper_closed_unverified", data.time)
         print("Cube contact pairs immediately after closure:",
               arm.object_contact_count(source), flush=True)
         print("Cube contacts after closure:",
@@ -597,6 +609,12 @@ def run(args, runtime=None):
             print("GRASP NOT STABLE: cube did not remain firmly held. "
                   "No transfer attempted.", flush=True)
             return False
+        # Attention transfer is triggered by verified ROBOT physical state.
+        # Human gaze/video timestamps are never used to time this switch.
+        if phase_attention is not None:
+            phase_attention.observe("stable_grasp", data.time, verified=True,
+                                    held_lift_m=float(held_z), bilateral_finger_contact=True)
+            snapshot("06b_destination_attention")
 
         # Re-observe the actual held cube-to-gripper displacement rather
         # than assuming the object is perfectly centered in the gripper.
@@ -633,6 +651,8 @@ def run(args, runtime=None):
         release_tip = release_cube - held_offset
         arm.go("transport", safe_tip, rot, duration=2.4)
         snapshot("07_transport")
+        if phase_attention is not None:
+            phase_attention.observe("transport_reached", data.time)
         actual_cube = held_state("after_transport")
 
         # Correct any small dynamic displacement WHILE ABOVE the bin walls.
@@ -664,6 +684,8 @@ def run(args, runtime=None):
               "cube contacts:", arm.object_contacts(source), flush=True)
         arm.step(0.6)
         snapshot("09_release")
+        if phase_attention is not None:
+            phase_attention.observe("released", data.time)
         print("1.0s after release: cube xyz:",
               np.round(source_body.xpos, 4).tolist(),
               "bin xyz:", np.round(bin_body.xpos, 4).tolist(),
@@ -687,8 +709,13 @@ def run(args, runtime=None):
             print("Task unsuccessful; inspect actual contacts and snapshots.")
         else:
             print("PASS: physical cube-in-bin predicate satisfied.")
+        if phase_attention is not None:
+            phase_attention.observe("placement_verified" if success else "placement_failed",
+                                    data.time, verified=bool(success))
         return bool(success)
     finally:
+        if phase_attention is not None:
+            phase_attention.save(folder / "phase_attention.json")
         if images is not None:
             images.close()
 

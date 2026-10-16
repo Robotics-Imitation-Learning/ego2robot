@@ -80,6 +80,29 @@ def build_plan(manifest,transcript,gaze_matches=None,allow_narration_only=False,
                  "destination_attended":row["destination"] in attended}
             if row["object"] not in attended or row["destination"] not in attended:
                 raise RuntimeError("Gaze correspondence failed to confirm narrated objects: "+str(row["gaze_evidence"]))
+            # Human times index RGB observations, NEVER robot-phase schedules.
+            # Find a valid HUMAN source-to-destination attention sequence.
+            # Times determine observation ORDER only, never robot schedules.
+            source_events=[e for e in subset if e["target"]==row["object"]]
+            dest_events=[e for e in subset if e["target"]==row["destination"]]
+            ordered_pairs=[(s,d) for s in source_events for d in dest_events
+                           if float(s["timestamp_s"])<=float(d["timestamp_s"])]
+            if not ordered_pairs:
+                raise RuntimeError("No observed human source-to-destination gaze phase transition")
+            observed_source,observed_dest=max(
+                ordered_pairs,key=lambda pair:float(pair[0]["score"])+float(pair[1]["score"]))
+            def phase_target(observation,target):
+                return {"label":target,
+                        "human_observation_time_s":float(observation["timestamp_s"]),
+                        "robot_xy":observation.get("robot_xy"),
+                        "score":float(observation["score"]),
+                        "raw_cosine":observation.get("raw_cosine")}
+            src=phase_target(observed_source,row["object"])
+            dst=phase_target(observed_dest,row["destination"])
+            row["phase_correspondence"]={
+                "source":src,"destination":dst,
+                "activation":"robot_verified_stable_grasp_only",
+                "timing":"human frames index video; robot clock independent"}
             row["grounding"]="narration_plus_observed_correspondence"
         elif allow_narration_only:
             row["grounding"]="narration_lexicon_only_NOT_VISUALLY_GROUNDED"
